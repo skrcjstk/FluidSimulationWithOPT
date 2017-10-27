@@ -71,8 +71,6 @@ public:
 	void UpdateAvgVelocity(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void InterpolateIISPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 
-	//void CompareValues(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
-
 private:
 	void CreateBoundaryWall(Vector3f p_min, Vector3f p_max);
 
