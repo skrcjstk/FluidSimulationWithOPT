@@ -5,11 +5,15 @@ FluidWorld::FluidWorld()
 	m_accTimeIntegration = 0.0f;
 	m_timeStep = 0.0025f;
 
-	m_viscosity = 0.002f;
-	m_surfaceTensionThr = 0.2f;
-	m_surfaceTensionCoeff = 0.2f;
 	m_useGravity = false;
 	m_restDensity = 1000.0f;
+	
+#if FLUID_METHOD == 0
+	pbfWorld = new PBFWorld(m_restDensity, 0.02f, 0.2f, 0.2f);
+#elif FLUID_METHOD == 1
+	iisphWorld = new IISPHWorld(m_restDensity, 0.02f, 0.2f, 0.2f, 0.01f, 100);
+#endif
+
 }
 FluidWorld::~FluidWorld() {}
 
@@ -21,10 +25,17 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 	m_smoothingLength = 4.0f * m_particleRadius;
 	k.SetSmoothingRadius(m_smoothingLength);
 
+#if FLUID_METHOD == 0
+	pbfWorld->SetSmoothingLength(m_smoothingLength);
+	pbfWorld->InitializeSimulationData(m_numOfParticles);
+#elif FLUID_METHOD == 1
+	iisphWorld->SetSmoothingLength(m_smoothingLength);
+	iisphWorld->InitializeSimulationData(m_numOfParticles);
+#endif
+
 	float diameter = 2.0f * p_particleRadius;
 
 	m_particles.resize(m_numOfParticles);
-	m_particlesLambda.resize(m_numOfParticles);
 	m_boundaryParticles.resize(p_containerParticles.size());
 	m_boundaryPsi.resize(p_containerParticles.size());
 
@@ -34,7 +45,7 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 #pragma omp for schedule(static)
 		for (unsigned int i = 0; i < m_numOfParticles; i++)
 		{
-			m_particles[i] = new FParticle(i);
+			m_particles[i] = new FParticle();
 			m_particles[i]->m_mass = 0.8f * m_restDensity * diameter * diameter * diameter;
 			m_particles[i]->m_restPosition = p_damParticles[i];
 			m_particles[i]->m_curPosition = p_damParticles[i];
@@ -71,7 +82,6 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 	if(p_particleRadius == 0.025f)
 		debugFlag = true;
 }
-
 void FluidWorld::Reset()
 {
 	for (unsigned int i = 0; i < m_numOfParticles; i++)
@@ -80,14 +90,18 @@ void FluidWorld::Reset()
 		m_particles[i]->m_velocity.setZero();
 		m_particles[i]->m_curPosition = m_particles[i]->m_restPosition;
 	}
-}
+#if FLUID_METHOD == 0
+	pbfWorld->Reset();
+#elif FLUID_METHOD == 1
+	iisphWorld->Reset();
+#endif
 
+}
 void FluidWorld::AddFParticle(Vector3f p_position, Vector3f p_velocity)
 {
 	float diameter = 2.0f * m_particleRadius;
-	int pid = m_numOfParticles;
 
-	FParticle * aP = new FParticle(pid);
+	FParticle * aP = new FParticle();
 	aP->m_mass = 0.8f * m_restDensity * diameter * diameter * diameter;
 	aP->m_restPosition = aP->m_curPosition = p_position;
 	aP->m_velocity = p_velocity;
@@ -95,42 +109,35 @@ void FluidWorld::AddFParticle(Vector3f p_position, Vector3f p_velocity)
 
 	m_particles.push_back(aP);
 	m_numOfParticles += 1;
-	m_particlesLambda.resize(m_numOfParticles);
+
+#if FLUID_METHOD == 0
+	pbfWorld->InitializeSimulationData(m_numOfParticles);
+#elif FLUID_METHOD == 1
+	iisphWorld->InitializeSimulationData(m_numOfParticles);
+#endif
 }
-
-void FluidWorld::DeleteFParticle(int p_id)
+void FluidWorld::DeleteFParticle(int p_idx)
 {
-	int idx = -1;
-	for (int i = 0; i < m_numOfParticles; i++)
-	{
-		if (m_particles[i]->m_pid == p_id)
-		{
-			idx = i;
-			break;
-		}
-	}
-
-	if (idx != -1)
-	{
-		m_particles.erase(m_particles.begin() + idx);
-
-		m_numOfParticles = m_particles.size();
-		for (int i = 0; i < m_numOfParticles; i++)
-		{
-			m_particles[i]->m_pid = i;
-		}
-		m_particlesLambda.resize(m_numOfParticles);
-	}
+	m_particles.erase(m_particles.begin() + p_idx);
+	m_numOfParticles = m_particles.size();
+#if FLUID_METHOD == 0
+	pbfWorld->InitializeSimulationData(m_numOfParticles);
+#elif FLUID_METHOD == 1
+	iisphWorld->InitializeSimulationData(m_numOfParticles);
+#endif
 }
 void FluidWorld::DeleteAll()
 {
 	m_numOfParticles = 0;
 	m_particles.clear();
 	m_particles.resize(0);
-	m_particlesLambda.clear();
-	m_particlesLambda.resize(0);
-}
 
+#if FLUID_METHOD == 0
+	pbfWorld->InitializeSimulationData(0);
+#elif FLUID_METHOD == 1
+	iisphWorld->InitializeSimulationData(0);
+#endif
+}
 void FluidWorld::NeighborListUpdate()
 {
 #pragma omp parallel default(shared)
@@ -158,191 +165,36 @@ void FluidWorld::NeighborListUpdate()
 		}
 	}
 }
-
-void FluidWorld::StepPBF()
+void FluidWorld::ComputeDensities()
 {
-	float h = m_timeStep;
+	int numParticles = m_particles.size();
 
-	// clear ExternForce
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
-	{
-		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-
-		m_particles[i]->m_deltaX.setZero();
-		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
-
-		if (m_particles[i]->m_mass != 0.0f)
-		{
-			m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
-			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
-		}
-	}
-
-	NeighborListUpdate();
-
-	ConstraintProjection();
-
-	
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
-	{
-		m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
-		
-	}
-
-	ComputeXSPHViscosity();
-
-	UpdateTimeStepSizeCFL();
-
-	m_accTimeIntegration += h;
-}
-
-void FluidWorld::ConstraintProjection()
-{
-	int maxiter = 100;
-	int iter = 0;
-
-	float eps = 1.0e-6;
-
-	unsigned int numParticles = m_numOfParticles;
-	float invH = 1.0 / m_timeStep;
-	float invH2 = invH*invH;
-
-	float density0 = m_restDensity;
-	float maxError = 0.01f;
-	float eta = maxError * 0.01 * density0;  // maxError is given in percent
-
-	float avg_density_err = 0.0f;
-	while (((avg_density_err > eta) || (iter < 2)) && (iter < maxiter))
-	{
-		avg_density_err = 0.0f;
-
-#pragma omp parallel default(shared)
-		{
-#pragma omp for schedule(static)
-			for (unsigned int i = 0; i < m_numOfParticles; i++)
-			{
-				// computePBFDensity
-				m_particles[i]->m_curDensity = m_particles[i]->m_mass * k.Cubic_Kernel0();
-
-				for (unsigned int j = 0; j < m_particles[i]->m_neighborList.size(); j++)
-				{
-					unsigned int idx = m_particles[i]->m_neighborList[j];
-					Vector3f r = m_particles[i]->m_curPosition - m_particles[idx]->m_curPosition;
-
-					m_particles[i]->m_curDensity += m_particles[idx]->m_mass * k.Cubic_Kernel(r);
-				}
-
-				for (unsigned int j = 0; j < m_particles[i]->m_neighborBoundaryList.size(); j++)
-				{
-					unsigned int idx = m_particles[i]->m_neighborBoundaryList[j];
-					Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[idx];
-					m_particles[i]->m_curDensity += m_boundaryPsi[idx] * k.Cubic_Kernel(r);
-				}
-
-				float density_err = std::max(m_particles[i]->m_curDensity, density0) - density0;
-#pragma omp atomic
-				avg_density_err += density_err / m_numOfParticles;
-
-				// Evaluate constraint function
-				float C = std::max(m_particles[i]->m_curDensity / density0 - 1.0f, 0.0f);
-
-				if (C != 0.0f)
-				{
-					// Compute gradients dC/dx_j 
-					float sum_grad_C2 = 0.0;
-					Vector3f gradC_i(0.0f, 0.0f, 0.0f);
-
-					for (unsigned int j = 0; j < m_particles[i]->m_neighborList.size(); j++)
-					{
-						unsigned int idx = m_particles[i]->m_neighborList[j];
-						Vector3f r = m_particles[i]->m_curPosition - m_particles[idx]->m_curPosition;
-
-						Vector3f gradC_j = -m_particles[idx]->m_mass / m_restDensity * k.Cubic_Kernel_Gradient(r);
-						sum_grad_C2 += gradC_j.squaredNorm();
-						gradC_i -= gradC_j;
-					}
-
-					for (unsigned int j = 0; j < m_particles[i]->m_neighborBoundaryList.size(); j++)
-					{
-						unsigned int idx = m_particles[i]->m_neighborBoundaryList[j];
-						Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[idx];
-
-						Vector3f gradC_j = -m_boundaryPsi[idx] / m_restDensity * k.Cubic_Kernel_Gradient(r);
-						sum_grad_C2 += gradC_j.squaredNorm();
-						gradC_i -= gradC_j;
-					}
-
-					sum_grad_C2 += gradC_i.squaredNorm();
-
-					// Compute lambda
-					m_particlesLambda[i] = -C / (sum_grad_C2 + eps);
-				}
-				else
-				{
-					m_particlesLambda[i] = 0.0f;
-				}
-			}
-
-#pragma omp for schedule(static)
-			// Compute position correction
-			for (unsigned int i = 0; i < m_numOfParticles; i++)
-			{
-				Vector3f corr(0.0f, 0.0f, 0.0f);
-
-				for (unsigned int j = 0; j < m_particles[i]->m_neighborList.size(); j++)
-				{
-					unsigned int idx = m_particles[i]->m_neighborList[j];
-					Vector3f r = m_particles[i]->m_curPosition - m_particles[idx]->m_curPosition;
-
-					Vector3f gradC_j = -m_particles[idx]->m_mass / m_restDensity * k.Cubic_Kernel_Gradient(r);
-					corr -= (m_particlesLambda[i] + m_particlesLambda[idx]) * gradC_j;
-				}
-
-				for (unsigned int j = 0; j < m_particles[i]->m_neighborBoundaryList.size(); j++)
-				{
-					unsigned int idx = m_particles[i]->m_neighborBoundaryList[j];
-					Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[idx];
-
-					Vector3f gradC_j = -m_boundaryPsi[idx] / m_restDensity * k.Cubic_Kernel_Gradient(r);
-					corr -= (m_particlesLambda[i]) * gradC_j;
-				}
-
-				m_particles[i]->m_deltaX = corr;
-			}
-
-#pragma omp for schedule(static)
-			for (unsigned int i = 0; i < m_numOfParticles; i++)
-			{
-				m_particles[i]->m_curPosition += m_particles[i]->m_deltaX;
-			}
-		}
-
-		iter++;
-	}
-}
-
-void FluidWorld::ComputeXSPHViscosity()
-{
-	// Compute viscosity forces (XSPH)
 #pragma omp parallel default(shared)
 	{
 #pragma omp for schedule(static)  
-		for (unsigned int i = 0; i < m_numOfParticles; i++)
+		for (int i = 0; i < numParticles; i++)
 		{
+			// Compute current density for particle i
+			m_particles[i]->m_density = m_particles[i]->m_mass * k.Cubic_Kernel0();
+
 			for (unsigned int j = 0; j < m_particles[i]->m_neighborList.size(); j++)
 			{
 				unsigned int idx = m_particles[i]->m_neighborList[j];
 				Vector3f r = m_particles[i]->m_curPosition - m_particles[idx]->m_curPosition;
 
-				Vector3f velCorr = m_viscosity * (m_particles[idx]->m_mass / m_particles[idx]->m_curDensity)
-					* (m_particles[i]->m_velocity - m_particles[idx]->m_velocity) * k.Cubic_Kernel(r);
-
-				m_particles[i]->m_velocity -= velCorr;
+				m_particles[i]->m_density += m_particles[idx]->m_mass * k.Cubic_Kernel(r);
 			}
+
+			for (unsigned int j = 0; j < m_particles[i]->m_neighborBoundaryList.size(); j++)
+			{
+				unsigned int idx = m_particles[i]->m_neighborBoundaryList[j];
+				Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[idx];
+				m_particles[i]->m_density += m_boundaryPsi[idx] * k.Cubic_Kernel(r);
+			}
+
 		}
 	}
 }
-
 void FluidWorld::UpdateTimeStepSizeCFL()
 {
 	float radius = m_particleRadius;
@@ -361,7 +213,7 @@ void FluidWorld::UpdateTimeStepSizeCFL()
 			maxVel = velMag;
 	}
 
-	// boundary particles
+	// boundary particles (if boundary moving)
 	/*
 	for (unsigned int i = 0; i < m_model->numberOfRigidBodyParticleObjects(); i++)
 	{
@@ -389,4 +241,151 @@ void FluidWorld::UpdateTimeStepSizeCFL()
 	h = std::max(h, minTimeStepSize);
 
 	m_timeStep = h;
+}
+
+int  FluidWorld::GetFluidMethodNumber()
+{
+#if FLUID_METHOD == 0
+	return 0;
+#elif FLUID_METHOD == 1
+	return 1;
+#endif
+}
+
+void*  FluidWorld::GetFluidMethod()
+{
+#if FLUID_METHOD == 0
+	return pbfWorld;
+#elif FLUID_METHOD == 1
+	return iisphWorld;
+#endif
+}
+
+void FluidWorld::StepPBF()
+{
+	float h = m_timeStep;
+
+	// clear ExternForce
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	{
+		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+
+		//m_particles[i]->m_deltaX.setZero();
+		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
+
+		if (m_particles[i]->m_mass != 0.0f)
+		{
+			m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
+			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+		}
+	}
+
+	NeighborListUpdate();
+	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+		
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	{
+		m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+	}
+
+	pbfWorld->ComputeXSPHViscosity(m_particles);
+
+	//UpdateTimeStepSizeCFL();
+
+	m_accTimeIntegration += h;
+}
+void FluidWorld::StepPBFonFine()
+{
+	float h = m_timeStep;
+
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	{
+		//m_particles[i]->m_deltaX.setZero();
+		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
+
+		if (m_particles[i]->m_mass != 0.0f)
+		{
+			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+		}
+	}
+
+	NeighborListUpdate();
+	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	{
+		m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+	}
+
+	pbfWorld->ComputeXSPHViscosity(m_particles);
+
+	//UpdateTimeStepSizeCFL();
+
+	m_accTimeIntegration += h;
+}
+
+void FluidWorld::StepIISPH()
+{
+	float h = m_timeStep;
+
+	// clear ExternForce
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	{
+		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+	}
+
+	NeighborListUpdate();
+	ComputeDensities();
+
+	// Compute viscosity 
+	iisphWorld->ComputeViscosity(m_particles);
+	iisphWorld->ComputeSurfaceTension();
+
+	//UpdateTimeStepSizeCFL();
+
+	// Solve density constraint	
+	iisphWorld->PredictAdvection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+	iisphWorld->PressureSolve(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+	iisphWorld->Integration(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+}
+
+void FluidWorld::StepIISPHonCoarse1()
+{
+	float h = m_timeStep;
+
+	// clear ExternForce
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	{
+		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+	}
+
+	NeighborListUpdate();
+	ComputeDensities();
+
+	// Compute viscosity 
+	iisphWorld->ComputeViscosity(m_particles);
+	iisphWorld->ComputeSurfaceTension();
+	iisphWorld->VelocityAdvection(m_particles, h);
+}
+void FluidWorld::StepIISPHonCoarse2()
+{
+	float h = m_timeStep;
+
+	// Solve density constraint	
+	iisphWorld->PredictAdvection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+	iisphWorld->PressureSolve(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+	iisphWorld->Integration(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+}
+
+void FluidWorld::StepIISPHonFine()
+{
+	float h = m_timeStep;
+
+	// clear ExternForce
+	NeighborListUpdate();
+
+	// Solve density constraint	
+	iisphWorld->PredictAdvection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+	iisphWorld->PressureSolve(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+	iisphWorld->Integration(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 }

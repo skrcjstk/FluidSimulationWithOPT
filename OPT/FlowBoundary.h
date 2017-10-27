@@ -14,7 +14,6 @@ public:
 	GridCell()
 	{
 		m_centerPosition[0] = m_centerPosition[1] = m_centerPosition[2] = 0.0f;
-		m_gridSize = 0.0f;
 	}
 	void SetValue(Vector3f p_cp, float p_gridSize)
 	{
@@ -22,9 +21,7 @@ public:
 		m_centerPosition[1] = p_cp[1];
 		m_centerPosition[2] = p_cp[2];
 
-		m_gridSize = p_gridSize;
-
-		float halfGridSize = 0.5f * m_gridSize;
+		float halfGridSize = 0.5f * p_gridSize;
 		m_minCorner[0] = m_centerPosition[0] - halfGridSize;
 		m_minCorner[1] = m_centerPosition[1] - halfGridSize;
 		m_minCorner[2] = m_centerPosition[2] - halfGridSize;
@@ -37,9 +34,7 @@ public:
 	Vector3f m_centerPosition;
 	Vector3f m_minCorner;
 	Vector3f m_maxCorner;
-	Vector3f m_avgVel;
 	
-	float m_gridSize;
 	bool m_inFluid;
 
 	std::vector<Vector3f> m_boundaryNeighborList;
@@ -63,18 +58,20 @@ public:
 		m_boundary.resize(0);
 	}
 
-	void CreateFlowBoundary(Vector3f start, Vector3f end, float gridSize);
-	void SearchBoundaryNeighbor(std::vector<Vector3f>& p_boundaryParticles, float p_radius);
+	void CreateFlowBoundary(Vector3f start, Vector3f end, float p_fineR);
+	void SearchBoundaryNeighbor(std::vector<Vector3f>& p_boundaryParticles, float p_fineR);
 	void SetFluidThreshold(float p_threshold);
 	
 	std::vector<GridCell>& GetFlowBoundary()	{	return m_boundary;	}
 	int GetBoundarySize() { return m_boundarySize; }
 	float GetGridSize() { return m_gridSize; }
 
-	void CreateFinePs(std::vector<FParticle*>& p_coarseP, float p_coarseP_radius, std::vector<FParticle*>& p_fineP, float p_fineP_radius);
-	
-	std::vector<Vector3f>& GetCPSet() { return m_CPSet; }
-	std::vector<Vector3f>& GetAvgVelSet() { return m_avgVelSet; }
+	void CreateFinePs(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void NeighborSearchBTWTwoRes(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void UpdateAvgVelocity(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void InterpolateIISPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+
+	//void CompareValues(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 
 private:
 	void CreateBoundaryWall(Vector3f p_min, Vector3f p_max);
@@ -84,10 +81,14 @@ private:
 	int m_cntOfcandisPerOneAxis;
 
 	std::vector<GridCell> m_boundary;
-	std::vector<Vector3f> m_CPSet;
-	std::vector<Vector3f> m_avgVelSet;
+	std::vector<Vector3f> m_tempVelforCoarse;
 	int m_boundarySize;
 	float m_fThr;
+	FluidKernel k;
+
+
+	std::vector<std::vector<int>> m_neighborListBTW;
+	
 };
 
 

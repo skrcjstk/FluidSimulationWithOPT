@@ -143,3 +143,10 @@ x64/Release/FluidSimulationWithOPT.ipdb
 x64/Release/FluidSimulationWithOPT.pdb
 x64/Release/libs/freeglut.exp
 x64/Release/libs/glew.exp
+OPT/x64/Release/OPT.tlog/Lib.read.1.tlog
+PositionBasedFluid/x64/Release/Position.686B6BCF.tlog/Lib.read.1.tlog
+IISPH/IISPH.vcxproj
+IISPH/IISPH.vcxproj.filters
+IISPH/ReadMe.txt
+PositionBasedFluid/x64/Release/IISPH.obj
+PositionBasedFluid/x64/Release/PBF.obj

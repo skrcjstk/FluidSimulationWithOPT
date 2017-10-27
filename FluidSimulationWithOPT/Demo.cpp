@@ -24,13 +24,11 @@ void cleanup();
 Primitive spherePrimiCoarse, spherePrimiFine;
 Primitive boxPrimi;
 
-
 void CreateBreakingDam(std::vector<Vector3f>& p_damParticles);
 void CreateContainer(std::vector<Vector3f>& p_boundaryParticles);
 void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryParticle, float p_particleRadius);
 
 void SubCreateContainer(std::vector<Vector3f>& p_boundaryParticles);
-void GenerateFineParticle();
 
 FluidWorld* world;
 FluidWorld* subWorld;
@@ -95,9 +93,23 @@ void timeStep()
 	// Simulation code
 	for (unsigned int i = 0; i < 1; i++)
 	{
-		GenerateFineParticle();
-		world->StepPBF();
-		subWorld->StepPBF();
+		fb.NeighborSearchBTWTwoRes(world, subWorld);
+		
+		if (world->GetFluidMethodNumber() == 0) // PBF case
+		{
+			fb.UpdateAvgVelocity(world, subWorld);
+			world->StepPBF();
+			subWorld->StepPBFonFine();
+		}
+		else if (world->GetFluidMethodNumber() == 1) // IISPH case
+		{
+			world->StepIISPHonCoarse1();
+			fb.InterpolateIISPH(world, subWorld);
+			subWorld->StepIISPHonFine();
+			world->StepIISPHonCoarse2();
+			
+			
+		}
 	}
 	doPause = !doPause;
 }
@@ -106,6 +118,7 @@ void reset()
 {
 	world->Reset();
 	subWorld->DeleteAll();
+	fb.CreateFinePs(world, subWorld);
 }
 
 void selection(const Eigen::Vector2i &start, const Eigen::Vector2i &end) {}
@@ -132,7 +145,7 @@ void render()
 	double vmin = 0.0;
 
 	// drawing fluid particles
-	float fluidColor[4] = { 0.0f, 0.7f, 0.7f, 0.5f };
+	float fluidColor[4] = { 0.0f, 0.7f, 0.7f, 0.2f };
 	for (int i = 0; i < world->GetNumOfParticles(); i++)
 	{
 		spherePrimiCoarse.renderSphere(world->GetParticle(i)->m_curPosition, fluidColor);
@@ -144,57 +157,58 @@ void render()
 		//spherePrimiCoarse.renderSphere(world->GetBoundaryParticlePosition(i), surfaceColor);
 	}
 
+	Vector3f translation(0.0f, 1.5f, 0.0f);
+
 	// drawing inFlowCell
 	float halfGridSize = fb.GetGridSize() / 2.0f;
 	float cellColor[4] = { 0.2f, 0.2f, 0.8f, 0.3f };
 	for (int i=0; i<fb.GetBoundarySize(); i++)
 	{
 		Vector3f& cellPos = fb.GetFlowBoundary()[i].m_centerPosition;
-		boxPrimi.renderBox(cellPos + Vector3f(0.0f, 1.5f, 0.0f), Vector3f(halfGridSize, halfGridSize, halfGridSize), cellColor);
+		//boxPrimi.renderBox(cellPos + translation, Vector3f(halfGridSize, halfGridSize, halfGridSize), cellColor);
 	}
 
 	// drawing subBoundary particles
 	float subContainerColor[4] = { 0.2f, 0.0f, 0.0f, 0.1f };
 	for (int i = 0; i < subWorld->GetNumOfBoundaryParticles(); i++)
 	{
-		//spherePrimiFine.renderSphere(subWorld->GetBoundaryParticlePosition(i) + Vector3f(0.0f, 1.5f, 0.0f), subContainerColor);
+		//spherePrimiFine.renderSphere(subWorld->GetBoundaryParticlePosition(i) + translation, subContainerColor);
 	}
 
 	// drawing subWorld Fparticles
-	float subFluidColor[4] = { 0.2f, 0.5f, 0.5f, 0.8f };
+	float subFluidColor[4] = { 0.2f, 0.3f, 0.9f, 0.8f };
 	for (int i = 0; i < subWorld->GetNumOfParticles(); i++)
 	{
-		spherePrimiFine.renderSphere(subWorld->GetParticle(i)->m_curPosition + Vector3f(0.0f, 1.5f, 0.0f), subFluidColor);
+		spherePrimiFine.renderSphere(subWorld->GetParticle(i)->m_curPosition + translation, subFluidColor);
 	}
 }
 
 void buildModel()
 {
+	// main domain creation
 	std::vector<Vector3f> boundaryParticles;
 	std::vector<Vector3f> damParticles;
 	
 	CreateContainer(boundaryParticles);
 	CreateBreakingDam(damParticles);
 	
-
 	world = new FluidWorld();
 	world->CreateParticles(damParticles, boundaryParticles, coarseR);
-
-
-
+	
+	// sub domain creation
 	std::vector<Vector3f> subDamParticles;
 	std::vector<Vector3f> subBoundaryParticles;
+	
 	SubCreateContainer(subBoundaryParticles);
 
 	subWorld = new FluidWorld();
 	subWorld->CreateParticles(subDamParticles, subBoundaryParticles, fineR);
 
-	float gridSize = 2.0f * fineR;
-	float centerX = (containerStart[0] + containerEnd[0]) * 0.5f + gridSize;
-
-	fb.CreateFlowBoundary(Vector3f(centerX, containerStart[1], containerStart[2]), Vector3f(centerX + gridSize, containerEnd[1], containerEnd[2]), gridSize);
+	fb.CreateFlowBoundary(containerStart, containerEnd, fineR);
 	fb.SearchBoundaryNeighbor(subBoundaryParticles, fineR);
-	fb.SetFluidThreshold(0.85f);
+	fb.SetFluidThreshold(0.35f);
+
+	fb.CreateFinePs(world, subWorld);
 }
 
 void cleanup()
@@ -298,7 +312,7 @@ void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryPa
 
 void SubCreateContainer(std::vector<Vector3f>& p_boundaryParticles)
 {
-	float x1 = 0.0f;
+	float x1 = -containerWidth / 2.0f;
 	float x2 = containerWidth / 2.0f;
 	float y1 = 0.0f;
 	float y2 = containerHeight;
@@ -318,40 +332,11 @@ void SubCreateContainer(std::vector<Vector3f>& p_boundaryParticles)
 	// Top
 	AddWall(Vector3f(x1, y2, z1), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
 	// Left
-	//AddWall(Vector3f(x1, y1, z1), Vector3f(x1, y2, z2), p_boundaryParticles, fineR);
+	AddWall(Vector3f(x1, y1, z1), Vector3f(x1, y2, z2), p_boundaryParticles, fineR);
 	// Right
 	AddWall(Vector3f(x2, y1, z1), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
 	// Back
 	AddWall(Vector3f(x1, y1, z1), Vector3f(x2, y2, z1), p_boundaryParticles, fineR);
 	// Front
 	AddWall(Vector3f(x1, y1, z2), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
-}
-
-void GenerateFineParticle()
-{
-	// delete particle on the out of subdomain
-	vector<int> delParticleList;
-	for (int i = 0; i < subWorld->GetNumOfParticles(); i++)
-	{
-		Vector3f p = subWorld->GetParticle(i)->m_curPosition;
-		if (p[0] < subContainerStart[0])
-			delParticleList.push_back(i);
-	}
-	for (int i = 0; i < delParticleList.size(); i++)
-		subWorld->DeleteFParticle(delParticleList[i]);
-
-	// create fine particle
-	if (subWorld->GetNumOfParticles() < 50)
-	{
-		fb.CreateFinePs(world->GetParticleList(), coarseR, subWorld->GetParticleList(), fineR);
-
-		for (int i = 0; i < fb.GetCPSet().size(); i++)
-		{
-			subWorld->AddFParticle(fb.GetCPSet()[i], fb.GetAvgVelSet()[i]);
-		}
-	}
-
-	
-
-		
 }
