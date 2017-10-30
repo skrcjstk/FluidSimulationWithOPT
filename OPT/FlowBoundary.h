@@ -68,8 +68,10 @@ public:
 
 	void CreateFinePs(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void NeighborSearchBTWTwoRes(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
-	void UpdateAvgVelocity(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	
+	void InterpolateVelocity(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void InterpolateIISPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 
 private:
 	void CreateBoundaryWall(Vector3f p_min, Vector3f p_max);

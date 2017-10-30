@@ -13,7 +13,7 @@ IISPHWorld::IISPHWorld(float p_restDensity, float p_viscosity, float p_surfaceTe
 void IISPHWorld::Reset()
 {
 	unsigned int numOfParticle = m_aii.size();
-	for (int i = 0; (int)numOfParticle; i++)
+	for (int i = 0; i < (int)numOfParticle; i++)
 	{
 		m_aii[i] = 0.0f;
 		m_dii[i].setZero();
@@ -32,6 +32,14 @@ void IISPHWorld::SetSmoothingLength(float p_smoothingLength)
 
 void IISPHWorld::InitializeSimulationData(int p_numOfParticles)
 {
+	m_aii.clear();
+	m_dii.clear();
+	m_dij_pj.clear();
+	m_density_adv.clear();
+	m_pressure.clear();
+	m_lastPressure.clear();
+	m_pressureAccel.clear();
+
 	m_aii.resize(p_numOfParticles, 0.0);
 	m_dii.resize(p_numOfParticles, Vector3f::Zero());
 	m_dij_pj.resize(p_numOfParticles, Vector3f::Zero());
@@ -104,21 +112,25 @@ void IISPHWorld::PredictAdvection(std::vector<FParticle*>& p_particles, std::vec
 #pragma omp for schedule(static)  
 		for (int i = 0; i < (int)numParticles; i++)
 		{
+			// Vector3r &vel = m_model->getVelocity(0, i);
+			// const Vector3r &accel = m_model->getAcceleration(i);
+			// vel += h * accel;
+
 			// Compute d_ii
 			m_dii[i].setZero();
 			float density2 = p_particles[i]->m_density * p_particles[i]->m_density;
-			//const Vector3r &xi = m_model->getPosition(0, i);
+			Vector3f &xi = p_particles[i]->m_curPosition;
 			for (unsigned int j = 0; j < p_particles[i]->m_neighborList.size(); j++)
 			{
 				unsigned int idx = p_particles[i]->m_neighborList[j];
-				Vector3f r = p_particles[i]->m_curPosition - p_particles[idx]->m_curPosition;
+				Vector3f r = xi - p_particles[idx]->m_curPosition;
 
 				m_dii[i] -= p_particles[idx]->m_mass / density2 * m_kernel.Cubic_Kernel_Gradient(r);
 			}
 			for (unsigned int j = 0; j < p_particles[i]->m_neighborBoundaryList.size(); j++)
 			{
 				unsigned int idx = p_particles[i]->m_neighborBoundaryList[j];
-				Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx];
+				Vector3f r = xi - p_boundaryParticles[idx];
 
 				m_dii[i] -= p_boundaryPsi[idx] / density2 * m_kernel.Cubic_Kernel_Gradient(r);
 

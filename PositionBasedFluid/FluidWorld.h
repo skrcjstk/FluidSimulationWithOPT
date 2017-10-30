@@ -9,10 +9,12 @@
 #include "FluidKernel.h"
 #include "PBF.h"
 #include "IISPH.h"
+#include "WCSPH.h"
 
 // 0 - PBF
 // 1 - IISPH
-#define FLUID_METHOD 1
+// 2 - WCSPH
+#define FLUID_METHOD 2
 
 using namespace Eigen;
 
@@ -21,6 +23,7 @@ class FluidWorld
 private:
 	PBFWorld* pbfWorld;
 	IISPHWorld* iisphWorld;
+	WCSPHWorld* wcsphWorld;
 	
 	std::vector<FParticle*> m_particles;
 	std::vector<Vector3f> m_boundaryParticles;
@@ -64,10 +67,17 @@ public:
 	void StepPBFonFine();
 	
 	void StepIISPH();
-
 	void StepIISPHonCoarse1();
 	void StepIISPHonCoarse2();
 	void StepIISPHonFine();
+
+	void StepWCSPH();
+	void StepWCSPHonCoarse1();
+	void StepWCSPHonCoarse2();
+	void StepWCSPHonFine1();
+	void StepWCSPHonFine2();
+
+
 	
 	FParticle* GetParticle(int p_index)
 	{

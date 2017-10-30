@@ -38,9 +38,9 @@ const float coarseR = 0.05f;
 const float fineR = coarseR * 0.5f;
 bool doPause = true;
 
-int damWidth = 5.0f;
-int damHeight = 5.0f;
-int damDepth = 5.0f;
+int damWidth = 3.0f;
+int damHeight = 3.0f;
+int damDepth = 3.0f;
 
 float containerWidth = (damWidth + 1)*coarseR*2.0f * 5.0f;
 float containerHeight = 1.5f;
@@ -97,7 +97,7 @@ void timeStep()
 		
 		if (world->GetFluidMethodNumber() == 0) // PBF case
 		{
-			fb.UpdateAvgVelocity(world, subWorld);
+			fb.InterpolateVelocity(world, subWorld);
 			world->StepPBF();
 			subWorld->StepPBFonFine();
 		}
@@ -108,8 +108,19 @@ void timeStep()
 			subWorld->StepIISPHonFine();
 			world->StepIISPHonCoarse2();
 			
-			
 		}
+		else if (world->GetFluidMethodNumber() == 2) // WCSPH case
+		{
+			//world->StepWCSPH();
+			subWorld->StepWCSPHonFine1();
+			world->StepWCSPHonCoarse1();
+			fb.InterpolateWCSPH(world, subWorld);
+			world->StepWCSPHonCoarse2();
+			subWorld->StepWCSPHonFine2();
+		
+		}
+
+
 	}
 	doPause = !doPause;
 }

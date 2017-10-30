@@ -12,6 +12,8 @@ FluidWorld::FluidWorld()
 	pbfWorld = new PBFWorld(m_restDensity, 0.02f, 0.2f, 0.2f);
 #elif FLUID_METHOD == 1
 	iisphWorld = new IISPHWorld(m_restDensity, 0.02f, 0.2f, 0.2f, 0.01f, 100);
+#elif FLUID_METHOD == 2
+	wcsphWorld = new WCSPHWorld(m_restDensity, 0.02f, 0.2f, 0.2f, 0.01f, 100);
 #endif
 
 }
@@ -31,6 +33,9 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 #elif FLUID_METHOD == 1
 	iisphWorld->SetSmoothingLength(m_smoothingLength);
 	iisphWorld->InitializeSimulationData(m_numOfParticles);
+#elif FLUID_METHOD == 2
+	wcsphWorld->SetSmoothingLength(m_smoothingLength);
+	wcsphWorld->InitializeSimulationData(m_numOfParticles);
 #endif
 
 	float diameter = 2.0f * p_particleRadius;
@@ -84,7 +89,7 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 }
 void FluidWorld::Reset()
 {
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	for (int i = 0; i < (int)m_numOfParticles; i++)
 	{
 		m_particles[i]->m_acceleration.setZero();
 		m_particles[i]->m_velocity.setZero();
@@ -94,6 +99,8 @@ void FluidWorld::Reset()
 	pbfWorld->Reset();
 #elif FLUID_METHOD == 1
 	iisphWorld->Reset();
+#elif FLUID_METHOD == 2
+	wcsphWorld->Reset();
 #endif
 
 }
@@ -114,16 +121,21 @@ void FluidWorld::AddFParticle(Vector3f p_position, Vector3f p_velocity)
 	pbfWorld->InitializeSimulationData(m_numOfParticles);
 #elif FLUID_METHOD == 1
 	iisphWorld->InitializeSimulationData(m_numOfParticles);
+#elif FLUID_METHOD == 2
+	wcsphWorld->InitializeSimulationData(m_numOfParticles);
 #endif
 }
 void FluidWorld::DeleteFParticle(int p_idx)
 {
 	m_particles.erase(m_particles.begin() + p_idx);
 	m_numOfParticles = m_particles.size();
+
 #if FLUID_METHOD == 0
 	pbfWorld->InitializeSimulationData(m_numOfParticles);
 #elif FLUID_METHOD == 1
 	iisphWorld->InitializeSimulationData(m_numOfParticles);
+#elif FLUID_METHOD == 2
+	wcsphWorld->InitializeSimulationData(m_numOfParticles);
 #endif
 }
 void FluidWorld::DeleteAll()
@@ -136,6 +148,8 @@ void FluidWorld::DeleteAll()
 	pbfWorld->InitializeSimulationData(0);
 #elif FLUID_METHOD == 1
 	iisphWorld->InitializeSimulationData(0);
+#elif FLUID_METHOD == 2
+	wcsphWorld->InitializeSimulationData(0);
 #endif
 }
 void FluidWorld::NeighborListUpdate()
@@ -242,22 +256,24 @@ void FluidWorld::UpdateTimeStepSizeCFL()
 
 	m_timeStep = h;
 }
-
 int  FluidWorld::GetFluidMethodNumber()
 {
 #if FLUID_METHOD == 0
 	return 0;
 #elif FLUID_METHOD == 1
 	return 1;
+#elif FLUID_METHOD == 2
+	return 2;
 #endif
 }
-
-void*  FluidWorld::GetFluidMethod()
+void* FluidWorld::GetFluidMethod()
 {
 #if FLUID_METHOD == 0
 	return pbfWorld;
 #elif FLUID_METHOD == 1
 	return iisphWorld;
+#elif FLUID_METHOD == 2
+	return wcsphWorld;
 #endif
 }
 
@@ -348,7 +364,6 @@ void FluidWorld::StepIISPH()
 	iisphWorld->PressureSolve(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 	iisphWorld->Integration(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 }
-
 void FluidWorld::StepIISPHonCoarse1()
 {
 	float h = m_timeStep;
@@ -376,7 +391,6 @@ void FluidWorld::StepIISPHonCoarse2()
 	iisphWorld->PressureSolve(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 	iisphWorld->Integration(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 }
-
 void FluidWorld::StepIISPHonFine()
 {
 	float h = m_timeStep;
@@ -388,4 +402,88 @@ void FluidWorld::StepIISPHonFine()
 	iisphWorld->PredictAdvection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 	iisphWorld->PressureSolve(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 	iisphWorld->Integration(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+}
+
+void FluidWorld::StepWCSPH()
+{
+	float h = m_timeStep;
+
+	NeighborListUpdate();
+
+	// Compute accelerations: a(t)
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+	
+	ComputeDensities();
+	wcsphWorld->ComputeViscosity(m_particles);
+	wcsphWorld->ComputeSurfaceTension();
+
+	wcsphWorld->ComputePressures(m_particles);
+	wcsphWorld->ComputePressureAccels(m_particles, m_boundaryParticles, m_boundaryPsi);
+	
+	//UpdateTimeStepSizeCFL();
+	wcsphWorld->Integration(m_particles, h);
+}
+void FluidWorld::StepWCSPHonCoarse1()
+{
+	NeighborListUpdate();
+
+	// Compute accelerations: a(t)
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+
+	ComputeDensities();
+	wcsphWorld->ComputeViscosity(m_particles);
+	wcsphWorld->ComputeSurfaceTension();
+
+	wcsphWorld->ComputePressures(m_particles);
+}
+void FluidWorld::StepWCSPHonCoarse2()
+{
+	float h = m_timeStep;
+	wcsphWorld->ComputePressureAccels(m_particles, m_boundaryParticles, m_boundaryPsi);
+	wcsphWorld->Integration(m_particles, h);
+}
+void FluidWorld::StepWCSPHonFine1()
+{
+	// clear values
+	for (int i = 0; i < (int)m_numOfParticles; i++)
+	{
+		wcsphWorld->m_pressure[i] = 0.0f;
+		wcsphWorld->m_pressureAccel[i].setZero();
+	}
+	ComputeDensities();
+}
+
+void FluidWorld::StepWCSPHonFine2()
+{
+	float h = m_timeStep;
+
+	//wcsphWorld->ComputePressures(m_particles);
+#pragma omp parallel default(shared)
+	{
+#pragma omp for schedule(static)  
+		for (int i = 0; i < (int)m_numOfParticles; i++)
+		{
+			float &density = m_particles[i]->m_density;
+			density = max(density, m_restDensity);
+			wcsphWorld->m_pressure[i] = wcsphWorld->m_stiffness * (pow(density / m_restDensity, wcsphWorld->m_exponent) - 1.0);
+		}
+	}
+
+	wcsphWorld->ComputePressureAccels(m_particles, m_boundaryParticles, m_boundaryPsi);
+	
+	//wcsphWorld->Integration(m_particles, h);
+#pragma omp parallel default(shared)
+	{
+#pragma omp for schedule(static) 
+		for (int i = 0; i < (int)m_numOfParticles; i++)
+		{
+			Vector3f &pos = m_particles[i]->m_curPosition;
+			Vector3f &vel = m_particles[i]->m_velocity;
+			Vector3f &pressureAccel = wcsphWorld->m_pressureAccel[i];
+			vel += pressureAccel * h;
+			pos += vel * h;
+		}
+	}
 }

@@ -218,7 +218,7 @@ void FlowBoundary::NeighborSearchBTWTwoRes(FluidWorld* p_mainWorld, FluidWorld* 
 	}
 }
 
-void FlowBoundary::UpdateAvgVelocity(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
+void FlowBoundary::InterpolateVelocity(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 {
 	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
 	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
@@ -358,13 +358,102 @@ void FlowBoundary::InterpolateIISPH(FluidWorld* p_mainWorld, FluidWorld* p_subWo
 			res_distVelY = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_distVelY);
 			res_distVelZ = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_distVelZ);
 			
-			// pressure interpolation
+			// density interpolation
 			res_density  = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_density);
 
 			fineP[i]->m_velocity[0] = res_distVelX[0];
 			fineP[i]->m_velocity[1] = res_distVelY[0];
 			fineP[i]->m_velocity[2] = res_distVelZ[0];
 			fineP[i]->m_density = res_density[0];
+		}
+		else
+		{
+			fineP[i]->m_velocity = Vector3f(0.0f, -9.8f, 0.0f) * h + fineP[i]->m_velocity;
+			//fineP[i]->m_density = p_subWorld->GetRestDensity();
+		}
+	}
+}
+
+void FlowBoundary::InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
+{
+	float h = p_subWorld->GetTimeStep();
+	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
+	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
+	WCSPHWorld* mainSimulMethod = (WCSPHWorld*)p_mainWorld->GetFluidMethod();
+	WCSPHWorld* subSimulMethod = (WCSPHWorld*)p_subWorld->GetFluidMethod();
+	
+	// tempVel for coarseP
+	for (int i = 0; i < coarseP.size(); i++)
+	{
+		if (coarseP[i]->m_mass != 0.0f)
+		{
+			m_tempVelforCoarse[i] = coarseP[i]->m_acceleration * h + coarseP[i]->m_velocity;
+		}
+	}
+
+	// MLS interpolation
+	VectorXf acc_distVelX(10), acc_distVelY(10), acc_distVelZ(10), acc_pressure(10);
+	VectorXf res_distVelX(10), res_distVelY(10), res_distVelZ(10), res_pressure(10);
+	VectorXf distFeature(10);
+	MatrixXf acc_distMat(10, 10);
+
+	for (int i = 0; i < fineP.size(); i++)
+	{
+		acc_distMat.setZero();
+		acc_distVelX.setZero();
+		acc_distVelY.setZero();
+		acc_distVelZ.setZero();
+
+		acc_pressure.setZero();
+
+		if (m_neighborListBTW[i].size() > 0)
+		{
+			Vector3f& finePos = fineP[i]->m_curPosition;
+
+			for (int j = 0; j < m_neighborListBTW[i].size(); j++)
+			{
+				Vector3f& coarsePos = coarseP[m_neighborListBTW[i][j]]->m_curPosition;
+				Vector3f dist = coarsePos - finePos;
+				float weight = k.Cubic_Kernel(dist);
+
+				distFeature[0] = 1;
+				distFeature[1] = dist[0];
+				distFeature[2] = dist[1];
+				distFeature[3] = dist[2];
+				distFeature[4] = dist[0] * dist[0];
+				distFeature[5] = dist[0] * dist[1];
+				distFeature[6] = dist[0] * dist[2];
+				distFeature[7] = dist[1] * dist[1];
+				distFeature[8] = dist[1] * dist[2];
+				distFeature[9] = dist[2] * dist[2];
+
+				for (int m = 0; m < 10; m++)
+					for (int n = 0; n < 10; n++)
+						acc_distMat(m, n) += weight * distFeature[m] * distFeature[n];
+
+				for (int m = 0; m < 10; m++)
+				{
+					int idx = m_neighborListBTW[i][j];
+
+					acc_distVelX[m] += weight * distFeature[m] * m_tempVelforCoarse[idx][0];
+					acc_distVelY[m] += weight * distFeature[m] * m_tempVelforCoarse[idx][1];
+					acc_distVelZ[m] += weight * distFeature[m] * m_tempVelforCoarse[idx][2];
+					acc_pressure[m] += weight * distFeature[m] * mainSimulMethod->m_pressure[idx];
+				}
+			}
+
+			// velocity interpolation
+			res_distVelX = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_distVelX);
+			res_distVelY = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_distVelY);
+			res_distVelZ = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_distVelZ);
+
+			// density interpolation
+			res_pressure = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_pressure);
+
+			fineP[i]->m_velocity[0] = res_distVelX[0];
+			fineP[i]->m_velocity[1] = res_distVelY[0];
+			fineP[i]->m_velocity[2] = res_distVelZ[0];
+			subSimulMethod->m_pressure[i] = res_pressure[0];
 		}
 		else
 		{
