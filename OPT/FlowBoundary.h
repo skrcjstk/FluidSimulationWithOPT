@@ -2,6 +2,7 @@
 #ifndef __FLOWBOUNDARY_H__
 #define __FLOWBOUNDARY_H__
 
+#include <iostream>
 #include <Eigen/dense>
 #include <vector>
 #include "FluidWorld.h"
@@ -71,7 +72,7 @@ public:
 	
 	void InterpolateVelocity(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void InterpolateIISPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
-	void InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld, bool p_debugFlag);
 
 private:
 	void CreateBoundaryWall(Vector3f p_min, Vector3f p_max);

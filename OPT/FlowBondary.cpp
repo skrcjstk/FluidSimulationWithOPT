@@ -9,9 +9,8 @@ void FlowBoundary::CreateFlowBoundary(Vector3f start, Vector3f end, float p_fine
 	CreateBoundaryWall(start, end);
 	m_boundarySize = m_boundary.size();
 
-	//float coarseR = 2.0f * p_fineR;
-	k.SetSmoothingRadius(4.0f * p_fineR);
-	
+	float coarseR = 2.0f * p_fineR;
+	k.SetSmoothingRadius(2.0f * p_fineR);
 }
 
 void FlowBoundary::SetFluidThreshold(float p_thr)
@@ -205,6 +204,7 @@ void FlowBoundary::NeighborSearchBTWTwoRes(FluidWorld* p_mainWorld, FluidWorld* 
 
 	for (int i = 0; i < fineP.size(); i++)
 	{
+		m_neighborListBTW[i].clear();
 		m_neighborListBTW[i].resize(0);
 		Vector3f& finePos = fineP[i]->m_curPosition;
 
@@ -374,7 +374,7 @@ void FlowBoundary::InterpolateIISPH(FluidWorld* p_mainWorld, FluidWorld* p_subWo
 	}
 }
 
-void FlowBoundary::InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
+void FlowBoundary::InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld, bool p_debugFlag)
 {
 	float h = p_subWorld->GetTimeStep();
 	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
@@ -399,6 +399,8 @@ void FlowBoundary::InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWo
 
 	for (int i = 0; i < fineP.size(); i++)
 	{
+		fineP[i]->m_interpolated = false;
+
 		acc_distMat.setZero();
 		acc_distVelX.setZero();
 		acc_distVelY.setZero();
@@ -412,7 +414,8 @@ void FlowBoundary::InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWo
 
 			for (int j = 0; j < m_neighborListBTW[i].size(); j++)
 			{
-				Vector3f& coarsePos = coarseP[m_neighborListBTW[i][j]]->m_curPosition;
+				int idx = m_neighborListBTW[i][j];
+				Vector3f& coarsePos = coarseP[idx]->m_curPosition;
 				Vector3f dist = coarsePos - finePos;
 				float weight = k.Cubic_Kernel(dist);
 
@@ -433,8 +436,6 @@ void FlowBoundary::InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWo
 
 				for (int m = 0; m < 10; m++)
 				{
-					int idx = m_neighborListBTW[i][j];
-
 					acc_distVelX[m] += weight * distFeature[m] * m_tempVelforCoarse[idx][0];
 					acc_distVelY[m] += weight * distFeature[m] * m_tempVelforCoarse[idx][1];
 					acc_distVelZ[m] += weight * distFeature[m] * m_tempVelforCoarse[idx][2];
@@ -443,22 +444,19 @@ void FlowBoundary::InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWo
 			}
 
 			// velocity interpolation
-			res_distVelX = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_distVelX);
-			res_distVelY = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_distVelY);
-			res_distVelZ = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_distVelZ);
-
-			// density interpolation
-			res_pressure = acc_distMat.jacobiSvd(ComputeThinU | ComputeThinV).solve(acc_pressure);
-
+			res_distVelX = acc_distMat.jacobiSvd(ComputeFullU | ComputeFullV).solve(acc_distVelX);
+			res_distVelY = acc_distMat.jacobiSvd(ComputeFullU | ComputeFullV).solve(acc_distVelY);
+			res_distVelZ = acc_distMat.jacobiSvd(ComputeFullU | ComputeFullV).solve(acc_distVelZ);
+			
 			fineP[i]->m_velocity[0] = res_distVelX[0];
 			fineP[i]->m_velocity[1] = res_distVelY[0];
 			fineP[i]->m_velocity[2] = res_distVelZ[0];
-			subSimulMethod->m_pressure[i] = res_pressure[0];
-		}
-		else
-		{
-			fineP[i]->m_velocity = Vector3f(0.0f, -9.8f, 0.0f) * h + fineP[i]->m_velocity;
-			//fineP[i]->m_density = p_subWorld->GetRestDensity();
+
+			// density interpolation
+			res_pressure = acc_distMat.jacobiSvd(ComputeFullU | ComputeFullV).solve(acc_pressure);
+			res_pressure[0] > 0.0f ? subSimulMethod->m_pressure[i] = res_pressure[0] : subSimulMethod->m_pressure[i] = 0.0f;
+
+			fineP[i]->m_interpolated = true;
 		}
 	}
 }

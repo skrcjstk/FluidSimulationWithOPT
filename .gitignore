@@ -150,3 +150,4 @@ IISPH/IISPH.vcxproj.filters
 IISPH/ReadMe.txt
 PositionBasedFluid/x64/Release/IISPH.obj
 PositionBasedFluid/x64/Release/PBF.obj
+PositionBasedFluid/x64/Release/WCSPH.obj

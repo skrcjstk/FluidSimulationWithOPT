@@ -45,9 +45,10 @@ private:
 	void UpdateTimeStepSizeCFL();
 
 	bool debugFlag = false;
+	
 
 public:
-	
+	int accFrameCount = 0;
 	float m_accTimeIntegration;
 
 	FluidWorld();

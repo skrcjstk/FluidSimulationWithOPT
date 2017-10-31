@@ -22,6 +22,8 @@ public:
 		
 	std::vector<unsigned int> m_neighborList;
 	std::vector<unsigned int> m_neighborBoundaryList;
+
+	bool m_interpolated = false;
 };
 
 #endif

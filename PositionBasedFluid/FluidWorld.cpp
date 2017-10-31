@@ -423,6 +423,8 @@ void FluidWorld::StepWCSPH()
 	
 	//UpdateTimeStepSizeCFL();
 	wcsphWorld->Integration(m_particles, h);
+
+	accFrameCount++;
 }
 void FluidWorld::StepWCSPHonCoarse1()
 {
@@ -443,16 +445,24 @@ void FluidWorld::StepWCSPHonCoarse2()
 	float h = m_timeStep;
 	wcsphWorld->ComputePressureAccels(m_particles, m_boundaryParticles, m_boundaryPsi);
 	wcsphWorld->Integration(m_particles, h);
+	
+	accFrameCount++;
 }
+
 void FluidWorld::StepWCSPHonFine1()
 {
+	NeighborListUpdate();
+
 	// clear values
 	for (int i = 0; i < (int)m_numOfParticles; i++)
 	{
+		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
 		wcsphWorld->m_pressure[i] = 0.0f;
 		wcsphWorld->m_pressureAccel[i].setZero();
 	}
-	ComputeDensities();
+	ComputeDensities(); 
+	wcsphWorld->ComputeViscosity(m_particles);
+	wcsphWorld->ComputeSurfaceTension();
 }
 
 void FluidWorld::StepWCSPHonFine2()
@@ -465,9 +475,12 @@ void FluidWorld::StepWCSPHonFine2()
 #pragma omp for schedule(static)  
 		for (int i = 0; i < (int)m_numOfParticles; i++)
 		{
-			float &density = m_particles[i]->m_density;
-			density = max(density, m_restDensity);
-			wcsphWorld->m_pressure[i] = wcsphWorld->m_stiffness * (pow(density / m_restDensity, wcsphWorld->m_exponent) - 1.0);
+			if (m_particles[i]->m_interpolated == false)
+			{
+				float &density = m_particles[i]->m_density;
+				density = max(density, m_restDensity);
+				wcsphWorld->m_pressure[i] = wcsphWorld->m_stiffness * (pow(density / m_restDensity, wcsphWorld->m_exponent) - 1.0);
+			}
 		}
 	}
 
@@ -479,11 +492,25 @@ void FluidWorld::StepWCSPHonFine2()
 #pragma omp for schedule(static) 
 		for (int i = 0; i < (int)m_numOfParticles; i++)
 		{
-			Vector3f &pos = m_particles[i]->m_curPosition;
-			Vector3f &vel = m_particles[i]->m_velocity;
-			Vector3f &pressureAccel = wcsphWorld->m_pressureAccel[i];
-			vel += pressureAccel * h;
-			pos += vel * h;
+			if (m_particles[i]->m_interpolated == false)
+			{
+				Vector3f &pos = m_particles[i]->m_curPosition;
+				Vector3f &vel = m_particles[i]->m_velocity;
+				Vector3f &accel = m_particles[i]->m_acceleration;
+				accel += wcsphWorld->m_pressureAccel[i];
+				vel += accel * h;
+				pos += vel * h;
+			}
+			else
+			{
+				Vector3f &pos = m_particles[i]->m_curPosition;
+				Vector3f &vel = m_particles[i]->m_velocity;
+				Vector3f &pressureAccel = wcsphWorld->m_pressureAccel[i];
+
+				vel += pressureAccel * h;
+				pos += vel * h;
+			}
 		}
 	}
+	
 }

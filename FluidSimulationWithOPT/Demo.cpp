@@ -38,9 +38,9 @@ const float coarseR = 0.05f;
 const float fineR = coarseR * 0.5f;
 bool doPause = true;
 
-int damWidth = 3.0f;
-int damHeight = 3.0f;
-int damDepth = 3.0f;
+int damWidth = 5.0f;
+int damHeight = 5.0f;
+int damDepth = 5.0f;
 
 float containerWidth = (damWidth + 1)*coarseR*2.0f * 5.0f;
 float containerHeight = 1.5f;
@@ -93,7 +93,7 @@ void timeStep()
 	// Simulation code
 	for (unsigned int i = 0; i < 1; i++)
 	{
-		fb.NeighborSearchBTWTwoRes(world, subWorld);
+		//fb.NeighborSearchBTWTwoRes(world, subWorld);
 		
 		if (world->GetFluidMethodNumber() == 0) // PBF case
 		{
@@ -111,16 +111,23 @@ void timeStep()
 		}
 		else if (world->GetFluidMethodNumber() == 2) // WCSPH case
 		{
-			//world->StepWCSPH();
-			subWorld->StepWCSPHonFine1();
-			world->StepWCSPHonCoarse1();
-			fb.InterpolateWCSPH(world, subWorld);
-			world->StepWCSPHonCoarse2();
-			subWorld->StepWCSPHonFine2();
-		
+			if (world->accFrameCount % 10 == -1)
+			{
+				fb.NeighborSearchBTWTwoRes(world, subWorld);
+
+				subWorld->StepWCSPHonFine1();
+				world->StepWCSPHonCoarse1();
+				fb.InterpolateWCSPH(world, subWorld, false);
+				world->StepWCSPHonCoarse2();
+				subWorld->StepWCSPHonFine2();
+
+			}
+			else
+			{
+				world->StepWCSPH();
+				subWorld->StepWCSPH();
+			}
 		}
-
-
 	}
 	doPause = !doPause;
 }
@@ -188,6 +195,7 @@ void render()
 
 	// drawing subWorld Fparticles
 	float subFluidColor[4] = { 0.2f, 0.3f, 0.9f, 0.8f };
+	
 	for (int i = 0; i < subWorld->GetNumOfParticles(); i++)
 	{
 		spherePrimiFine.renderSphere(subWorld->GetParticle(i)->m_curPosition + translation, subFluidColor);
