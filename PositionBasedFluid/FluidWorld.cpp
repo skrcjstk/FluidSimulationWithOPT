@@ -423,8 +423,6 @@ void FluidWorld::StepWCSPH()
 	
 	//UpdateTimeStepSizeCFL();
 	wcsphWorld->Integration(m_particles, h);
-
-	accFrameCount++;
 }
 void FluidWorld::StepWCSPHonCoarse1()
 {
@@ -445,10 +443,7 @@ void FluidWorld::StepWCSPHonCoarse2()
 	float h = m_timeStep;
 	wcsphWorld->ComputePressureAccels(m_particles, m_boundaryParticles, m_boundaryPsi);
 	wcsphWorld->Integration(m_particles, h);
-	
-	accFrameCount++;
 }
-
 void FluidWorld::StepWCSPHonFine1()
 {
 	NeighborListUpdate();
@@ -464,7 +459,6 @@ void FluidWorld::StepWCSPHonFine1()
 	wcsphWorld->ComputeViscosity(m_particles);
 	wcsphWorld->ComputeSurfaceTension();
 }
-
 void FluidWorld::StepWCSPHonFine2()
 {
 	float h = m_timeStep;
@@ -475,7 +469,7 @@ void FluidWorld::StepWCSPHonFine2()
 #pragma omp for schedule(static)  
 		for (int i = 0; i < (int)m_numOfParticles; i++)
 		{
-			if (m_particles[i]->m_interpolated == false)
+			if (m_particles[i]->m_interpolated != true)
 			{
 				float &density = m_particles[i]->m_density;
 				density = max(density, m_restDensity);
@@ -492,7 +486,16 @@ void FluidWorld::StepWCSPHonFine2()
 #pragma omp for schedule(static) 
 		for (int i = 0; i < (int)m_numOfParticles; i++)
 		{
-			if (m_particles[i]->m_interpolated == false)
+			if (m_particles[i]->m_interpolated == true)
+			{
+				Vector3f &pos = m_particles[i]->m_curPosition;
+				Vector3f &vel = m_particles[i]->m_velocity;
+				Vector3f &accel = wcsphWorld->m_pressureAccel[i];
+				// accel += wcsphWorld->m_pressureAccel[i];
+				vel += accel * h;
+				pos += vel * h;
+			}
+			else
 			{
 				Vector3f &pos = m_particles[i]->m_curPosition;
 				Vector3f &vel = m_particles[i]->m_velocity;
@@ -501,16 +504,7 @@ void FluidWorld::StepWCSPHonFine2()
 				vel += accel * h;
 				pos += vel * h;
 			}
-			else
-			{
-				Vector3f &pos = m_particles[i]->m_curPosition;
-				Vector3f &vel = m_particles[i]->m_velocity;
-				Vector3f &pressureAccel = wcsphWorld->m_pressureAccel[i];
-
-				vel += pressureAccel * h;
-				pos += vel * h;
-			}
+			
 		}
 	}
-	
 }

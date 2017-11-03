@@ -48,7 +48,6 @@ private:
 	
 
 public:
-	int accFrameCount = 0;
 	float m_accTimeIntegration;
 
 	FluidWorld();
@@ -77,8 +76,6 @@ public:
 	void StepWCSPHonCoarse2();
 	void StepWCSPHonFine1();
 	void StepWCSPHonFine2();
-
-
 	
 	FParticle* GetParticle(int p_index)
 	{

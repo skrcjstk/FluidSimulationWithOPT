@@ -53,6 +53,8 @@ Vector3f subContainerEnd;
 
 GLint context_major_version, context_minor_version;
 
+int accFrameCount = 0;
+
 int main(int argc, char** argv)
 {
 	// OpenGL	
@@ -111,6 +113,24 @@ void timeStep()
 		}
 		else if (world->GetFluidMethodNumber() == 2) // WCSPH case
 		{
+			accFrameCount++;
+
+			//if (accFrameCount % 10 == 0)
+			{
+				fb.NeighborSearchBTWTwoRes2(world, subWorld);
+				world->StepWCSPHonFine1();
+				subWorld->StepWCSPHonCoarse1();
+				fb.InterpolateWCSPH2(world, subWorld, false);
+				subWorld->StepWCSPHonCoarse2();
+				world->StepWCSPHonFine2();
+			}
+			//else
+			//{
+			//	world->StepWCSPH();
+			//	subWorld->StepWCSPH();
+			//}
+			
+			/*
 			if (world->accFrameCount % 10 == -1)
 			{
 				fb.NeighborSearchBTWTwoRes(world, subWorld);
@@ -120,13 +140,14 @@ void timeStep()
 				fb.InterpolateWCSPH(world, subWorld, false);
 				world->StepWCSPHonCoarse2();
 				subWorld->StepWCSPHonFine2();
-
+				
 			}
 			else
 			{
 				world->StepWCSPH();
 				subWorld->StepWCSPH();
 			}
+			*/
 		}
 	}
 	doPause = !doPause;

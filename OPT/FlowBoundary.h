@@ -74,6 +74,10 @@ public:
 	void InterpolateIISPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld, bool p_debugFlag);
 
+	//temp
+	void NeighborSearchBTWTwoRes2(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void InterpolateWCSPH2(FluidWorld* p_mainWorld, FluidWorld* p_subWorld, bool p_debugFlag);
+
 private:
 	void CreateBoundaryWall(Vector3f p_min, Vector3f p_max);
 
@@ -86,9 +90,11 @@ private:
 	int m_boundarySize;
 	float m_fThr;
 	FluidKernel k;
-
-
-	std::vector<std::vector<int>> m_neighborListBTW;
+	
+	std::vector<std::vector<int>> m_neighborListBTWforFine;
+	
+	std::vector<std::vector<int>> m_neighborListBTWforCoarse;
+	std::vector<Vector3f> m_tempVelforFine;
 	
 };
 
