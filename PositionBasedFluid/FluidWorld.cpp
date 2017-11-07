@@ -339,6 +339,41 @@ void FluidWorld::StepPBFonFine()
 
 	m_accTimeIntegration += h;
 }
+void FluidWorld::StepPBFonFine1()
+{
+	float h = m_timeStep;
+
+	// clear ExternForce
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	{
+		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
+		if (m_particles[i]->m_mass != 0.0f)
+		{
+			m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
+			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+		}
+	}
+	NeighborListUpdate();
+}
+void FluidWorld::StepPBFonFine2()
+{
+	float h = m_timeStep;
+
+	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	{
+		m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+	}
+
+	pbfWorld->ComputeXSPHViscosity(m_particles);
+
+	//UpdateTimeStepSizeCFL();
+
+	m_accTimeIntegration += h;
+}
+
 
 void FluidWorld::StepIISPH()
 {

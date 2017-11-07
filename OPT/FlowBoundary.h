@@ -6,6 +6,7 @@
 #include <Eigen/dense>
 #include <vector>
 #include "FluidWorld.h"
+#include "PBFCData.h"
 
 using namespace Eigen;
 
@@ -78,6 +79,11 @@ public:
 	void NeighborSearchBTWTwoRes2(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void InterpolateWCSPH2(FluidWorld* p_mainWorld, FluidWorld* p_subWorld, bool p_debugFlag);
 
+	// for PBFC
+	void NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+
+
 private:
 	void CreateBoundaryWall(Vector3f p_min, Vector3f p_max);
 
@@ -92,10 +98,14 @@ private:
 	FluidKernel k;
 	
 	std::vector<std::vector<int>> m_neighborListBTWforFine;
-	
 	std::vector<std::vector<int>> m_neighborListBTWforCoarse;
 	std::vector<Vector3f> m_tempVelforFine;
-	
+
+	// for PBFC
+	PBFControlData m_PBFCData;	
+	std::vector<std::vector<int>> m_neighListwithFineP;
+	std::vector<std::vector<int>> m_neighListwithBoundaryFineP;
+
 };
 
 

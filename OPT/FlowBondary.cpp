@@ -10,7 +10,7 @@ void FlowBoundary::CreateFlowBoundary(Vector3f start, Vector3f end, float p_fine
 	m_boundarySize = m_boundary.size();
 
 	float coarseR = 2.0f * p_fineR;
-	k.SetSmoothingRadius(2.0f * coarseR);
+	k.SetSmoothingRadius(4.0f * coarseR);
 }
 
 void FlowBoundary::SetFluidThreshold(float p_thr)
@@ -136,67 +136,14 @@ void FlowBoundary::CreateFinePs(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 	m_neighborListBTWforCoarse.resize(p_mainWorld->GetNumOfParticles());
 	m_tempVelforFine.resize(p_subWorld->GetNumOfParticles());
 
-	/*
-	// search neighbor fineP
-	float searchArea = 3.0f * p_fineP_radius;
-	std::vector<int> neighborIdx;
+	// for PBFC
+	m_PBFCData.m_lambdaForCoarse.resize(p_mainWorld->GetNumOfParticles());
+	m_PBFCData.m_corrWithDensity.resize(p_subWorld->GetNumOfParticles());
+	m_PBFCData.m_corrWithVelocity.resize(p_subWorld->GetNumOfParticles());
+	m_PBFCData.m_weightForVelocityC.resize(p_subWorld->GetNumOfParticles());
 
-	for (int j = 0; j < p_fineP.size(); j++)
-	{
-	if ((m_boundary[i].m_centerPosition - p_fineP[j]->m_curPosition).norm() < searchArea)
-	neighborIdx.push_back(j);
-	}
-
-	Vector3f start = m_boundary[i].m_minCorner + Vector3f(0.5f * m_lcp, 0.5f * m_lcp, 0.5f * m_lcp);
-	float minDist = 300.0f;
-	Vector3f minCandi;
-	for (int x = 0; x < m_cntOfcandisPerOneAxis; x++)
-	{
-	float stepX = x*m_lcp;
-	for (int y = 0; y < m_cntOfcandisPerOneAxis; y++)
-	{
-	float stepY = y*m_lcp;
-	for (int z = 0; z < m_cntOfcandisPerOneAxis; z++)
-	{
-	Vector3f candi = start + Vector3f(stepX, stepY, z*m_lcp);
-
-	bool nopeFlag = false;
-	for (int k = 0; k < neighborIdx.size(); k++)
-	{
-	if ((candi - p_fineP[neighborIdx[k]]->m_curPosition).norm() < l0)
-	{
-	nopeFlag = true;
-	break;
-	}
-	}
-	for (int k = 0; k < m_boundary[i].m_boundaryNeighborList.size(); k++)
-	{
-	if ((candi - m_boundary[i].m_boundaryNeighborList[k]).norm() < l0)
-	{
-	nopeFlag = true;
-	break;
-	}
-	}
-
-	if (nopeFlag == false)
-	{
-	float dist = (candi - m_boundary[i].m_centerPosition).norm();
-	if (dist < minDist)
-	{
-	minDist = dist;
-	minCandi = candi;
-	}
-	}
-	}
-	}
-	}
-
-	if (minDist != 300.0f)
-	{
-	m_CPSet.push_back(minCandi);
-	m_avgVelSet.push_back(m_boundary[i].m_avgVel);
-	}
-	*/
+	m_neighListwithFineP.resize(p_mainWorld->GetNumOfParticles());
+	m_neighListwithBoundaryFineP.resize(p_mainWorld->GetNumOfParticles());
 }
 
 void FlowBoundary::NeighborSearchBTWTwoRes(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
@@ -220,7 +167,6 @@ void FlowBoundary::NeighborSearchBTWTwoRes(FluidWorld* p_mainWorld, FluidWorld* 
 		}
 	}
 }
-
 void FlowBoundary::NeighborSearchBTWTwoRes2(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 {
 	float searchRange = k.GetSmoothingRadius();
@@ -402,6 +348,7 @@ void FlowBoundary::InterpolateIISPH(FluidWorld* p_mainWorld, FluidWorld* p_subWo
 		}
 	}
 }
+
 void FlowBoundary::InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld, bool p_debugFlag)
 {
 	float h = p_subWorld->GetTimeStep();
@@ -488,8 +435,6 @@ void FlowBoundary::InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWo
 		}
 	}
 }
-
-
 void FlowBoundary::InterpolateWCSPH2(FluidWorld* p_mainWorld, FluidWorld* p_subWorld, bool p_debugFlag)
 {
 	float h = p_subWorld->GetTimeStep();
@@ -576,4 +521,147 @@ void FlowBoundary::InterpolateWCSPH2(FluidWorld* p_mainWorld, FluidWorld* p_subW
 			coarseP[i]->m_interpolated = true;
 		}
 	}
+}
+
+void FlowBoundary::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
+{
+	float searchRange = 4.0f * p_subWorld->GetParticleRadius();
+	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
+	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
+	std::vector<Vector3f>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
+
+	for (int i = 0; i < coarseP.size(); i++)
+	{
+		Vector3f& coarsePos = coarseP[i]->m_curPosition;
+
+		m_neighListwithFineP[i].clear();
+		m_neighListwithFineP[i].resize(0);
+		for (int j = 0; j < fineP.size(); j++)
+		{
+			Vector3f& finePos = fineP[j]->m_curPosition;
+			if ((coarsePos - finePos).norm() <= searchRange)
+				m_neighListwithFineP[i].push_back(j);
+		}
+
+		m_neighListwithBoundaryFineP.clear();
+		m_neighListwithBoundaryFineP[i].resize(0);
+		for (int j = 0; j < boundaryFineP.size(); j++)
+		{
+			Vector3f& finePos = boundaryFineP[j];
+			if ((coarsePos - finePos).norm() <= searchRange)
+				m_neighListwithBoundaryFineP[i].push_back(j);
+		}
+	}
+}
+void FlowBoundary::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
+{
+	int numOfCoarse = p_mainWorld->GetNumOfParticles();
+	int numOfFine = p_subWorld->GetNumOfParticles();
+	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
+	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
+	std::vector<Vector3f>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
+
+	float mainRestDensity = p_mainWorld->GetRestDensity();
+	float intensityOfDensityC = 1.0f;
+	float intensityOfVelosityC = 1.0f;
+
+	for (int i = 0; i < numOfFine; i++)
+	{
+		m_PBFCData.m_corrWithDensity[i].setZero();
+		m_PBFCData.m_corrWithVelocity[i].setZero();
+		m_PBFCData.m_lambdaForCoarse[i] = 0.0f;
+		m_PBFCData.m_weightForVelocityC[i] = 0.0f;
+
+	}
+
+	// update CoarseLambda & correction with Density Constraint
+	for (int i = 0; i < numOfCoarse; i++)
+	{
+		Vector3f& coarsePos = coarseP[i]->m_curPosition;
+
+		float density = 0; 
+		for (int j = 0; j < m_neighListwithFineP[i].size(); j++)
+		{
+			int idx = m_neighListwithFineP[i][j];
+			Vector3f& finePos = fineP[idx]->m_curPosition;
+			density += fineP[idx]->m_mass * k.Cubic_Kernel(coarsePos-finePos);
+		}
+		for (int j = 0; j < m_neighListwithBoundaryFineP[i].size(); j++)
+		{
+			int idx = m_neighListwithBoundaryFineP[i][j];
+			Vector3f& finePos = boundaryFineP[idx];
+			density += p_subWorld->GetBoundaryPsi(idx) * k.Cubic_Kernel(coarsePos - finePos);
+		}
+
+		float C = std::max(density / mainRestDensity - 1.0f, 0.0f);
+
+		if (C != 0.0f)
+		{
+			// Compute gradients dC/dx_j 
+			float sum_grad_C2 = 0.0;
+			Vector3f gradC_i(0.0f, 0.0f, 0.0f);
+
+			for (unsigned int j = 0; j < m_neighListwithFineP[i].size(); j++)
+			{
+				unsigned int idx = m_neighListwithFineP[i][j];
+				Vector3f& finePos = fineP[idx]->m_curPosition;
+
+				Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos-finePos);
+				sum_grad_C2 += gradC_j.squaredNorm();
+				gradC_i -= gradC_j;
+			}
+
+			for (unsigned int j = 0; j < m_neighListwithBoundaryFineP[i].size(); j++)
+			{
+				int idx = m_neighListwithBoundaryFineP[i][j];
+				Vector3f& finePos = boundaryFineP[idx];
+
+				Vector3f gradC_j = -p_subWorld->GetBoundaryPsi(idx) / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
+				sum_grad_C2 += gradC_j.squaredNorm();
+				gradC_i -= gradC_j;
+			}
+
+			sum_grad_C2 += gradC_i.squaredNorm();
+
+			// Compute lambda
+			m_PBFCData.m_lambdaForCoarse[i] = -C / (sum_grad_C2 + 1.0e-6);
+		}
+
+		// calc correction with density constraint
+		if (m_PBFCData.m_lambdaForCoarse[i] != 0.0f)
+		{
+			for (unsigned int j = 0; j < m_neighListwithFineP[i].size(); j++)
+			{
+				unsigned int idx = m_neighListwithFineP[i][j];
+				Vector3f& finePos = fineP[idx]->m_curPosition;
+
+				Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
+				m_PBFCData.m_corrWithDensity[idx] += intensityOfDensityC * m_PBFCData.m_lambdaForCoarse[i] * gradC_j;
+			}
+		}
+
+		// calc correction with Velocity Constraint1
+		for (unsigned int j = 0; j < m_neighListwithFineP[i].size(); j++)
+		{
+			unsigned int idx = m_neighListwithFineP[i][j];
+			Vector3f& finePos = fineP[idx]->m_curPosition;
+
+			m_PBFCData.m_corrWithVelocity[idx] += coarseP[i]->m_velocity * k.Cubic_Kernel(finePos - coarsePos);
+			m_PBFCData.m_weightForVelocityC[idx] += k.Cubic_Kernel(finePos - coarsePos);
+		}
+	}
+	
+	// calc correction with Velocity Constraint2
+	for (int i = 0; i < numOfFine; i++)
+	{
+		if (m_PBFCData.m_corrWithVelocity[i].norm() != 0.0f)
+		{
+			m_PBFCData.m_corrWithVelocity[i] = m_PBFCData.m_corrWithVelocity[i] / m_PBFCData.m_weightForVelocityC[i];
+			m_PBFCData.m_corrWithVelocity[i] = intensityOfVelosityC * p_subWorld->GetTimeStep()
+				* (m_PBFCData.m_corrWithVelocity[i] - fineP[i]->m_velocity);
+		}
+		
+		fineP[i]->m_curPosition += m_PBFCData.m_corrWithVelocity[i] + m_PBFCData.m_corrWithDensity[i];
+	}
+
 }

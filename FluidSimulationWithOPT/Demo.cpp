@@ -95,16 +95,40 @@ void timeStep()
 	// Simulation code
 	for (unsigned int i = 0; i < 1; i++)
 	{
-		//fb.NeighborSearchBTWTwoRes(world, subWorld);
-		
 		if (world->GetFluidMethodNumber() == 0) // PBF case
 		{
-			fb.InterpolateVelocity(world, subWorld);
 			world->StepPBF();
-			subWorld->StepPBFonFine();
+			
+			subWorld->StepPBF();
+			
+			// coarse simulation
+			world->StepPBF();
+
+			// fine advection and neighbor update
+			subWorld->StepPBFonFine1();
+			
+			// neighbor update between fine and coarse
+			fb.NeighborBTWTwoResForPBFC(world, subWorld);
+
+			// update lambda for coarse & solve density and velocity constraints
+			fb.SolvePBFCConstaints(world, subWorld);
+
+			// fine density relaxing and update
+			subWorld->StepPBFonFine2();
+
+
+
+
+
+
+			//fb.InterpolateVelocity(world, subWorld);
+			//world->StepPBF();
+			//subWorld->StepPBFonFine();
 		}
 		else if (world->GetFluidMethodNumber() == 1) // IISPH case
 		{
+			fb.NeighborSearchBTWTwoRes(world, subWorld);
+
 			world->StepIISPHonCoarse1();
 			fb.InterpolateIISPH(world, subWorld);
 			subWorld->StepIISPHonFine();

@@ -14,7 +14,7 @@
 // 0 - PBF
 // 1 - IISPH
 // 2 - WCSPH
-#define FLUID_METHOD 2
+#define FLUID_METHOD 0
 
 using namespace Eigen;
 
@@ -65,6 +65,8 @@ public:
 
 	void StepPBF();
 	void StepPBFonFine();
+	void StepPBFonFine1();
+	void StepPBFonFine2();
 	
 	void StepIISPH();
 	void StepIISPHonCoarse1();
@@ -84,6 +86,15 @@ public:
 	std::vector<FParticle*>& GetParticleList()
 	{
 		return m_particles;
+	}
+	std::vector<Vector3f>& GetBoundaryParticleList()
+	{
+		return m_boundaryParticles;
+	}
+
+	float GetBoundaryPsi(int idx)
+	{
+		return m_boundaryPsi[idx];
 	}
 
 	unsigned int  GetNumOfParticles()
