@@ -67,6 +67,8 @@ public:
 	void StepPBFonFine();
 	void StepPBFonFine1();
 	void StepPBFonFine2();
+	void StepPBFonFine1WithTF();
+	void StepPBFonFine2WithTF();
 	
 	void StepIISPH();
 	void StepIISPHonCoarse1();
@@ -122,6 +124,10 @@ public:
 	void SetUseGravity(bool p_useGravity)
 	{
 		m_useGravity = p_useGravity;
+	}
+	void SetTimeStep(float p_timeStep)
+	{
+		m_timeStep = p_timeStep;
 	}
 
 	FluidKernel& GetKernel() { return k; }

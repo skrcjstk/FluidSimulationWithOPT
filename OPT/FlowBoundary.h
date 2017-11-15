@@ -43,6 +43,15 @@ public:
 
 };
 
+class TrainData
+{
+public:
+	float weight;
+	Vector3f RVec;
+	Vector3f RVel;
+
+};
+
 class FlowBoundary
 {
 public:
@@ -83,6 +92,9 @@ public:
 	void NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 
+	// for TrainingData
+	std::vector<std::vector<TrainData>> m_trainData;
+	std::vector<std::vector<TrainData>> m_trainDataForBoundary;
 
 private:
 	void CreateBoundaryWall(Vector3f p_min, Vector3f p_max);
@@ -102,10 +114,10 @@ private:
 	std::vector<Vector3f> m_tempVelforFine;
 
 	// for PBFC
-	PBFControlData m_PBFCData;	
+	PBFControlData m_PBFCData;
 	std::vector<std::vector<int>> m_neighListwithFineP;
 	std::vector<std::vector<int>> m_neighListwithBoundaryFineP;
-
+	
 };
 
 

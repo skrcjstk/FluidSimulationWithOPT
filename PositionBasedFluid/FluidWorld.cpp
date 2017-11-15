@@ -3,7 +3,7 @@
 FluidWorld::FluidWorld()
 {
 	m_accTimeIntegration = 0.0f;
-	m_timeStep = 0.0025f;
+	m_timeStep = 0.005f;
 
 	m_useGravity = false;
 	m_restDensity = 1000.0f;
@@ -285,8 +285,6 @@ void FluidWorld::StepPBF()
 	for (unsigned int i = 0; i < m_numOfParticles; i++)
 	{
 		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-
-		//m_particles[i]->m_deltaX.setZero();
 		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
 
 		if (m_particles[i]->m_mass != 0.0f)
@@ -352,6 +350,7 @@ void FluidWorld::StepPBFonFine1()
 		{
 			m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
 			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+			m_particles[i]->m_tempPosition = m_particles[i]->m_curPosition;
 		}
 	}
 	NeighborListUpdate();
@@ -372,6 +371,29 @@ void FluidWorld::StepPBFonFine2()
 	//UpdateTimeStepSizeCFL();
 
 	m_accTimeIntegration += h;
+}
+
+void FluidWorld::StepPBFonFine1WithTF()
+{
+	float h = m_timeStep;
+
+	// clear ExternForce
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+	{
+		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
+		if (m_particles[i]->m_mass != 0.0f)
+		{
+			m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
+			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+		}
+	}
+}
+void FluidWorld::StepPBFonFine2WithTF()
+{
+	float h = m_timeStep;
+	for (unsigned int i = 0; i < m_numOfParticles; i++)
+		m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
 }
 
 

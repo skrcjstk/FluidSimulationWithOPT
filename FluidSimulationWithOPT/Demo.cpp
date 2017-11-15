@@ -27,8 +27,9 @@ Primitive boxPrimi;
 void CreateBreakingDam(std::vector<Vector3f>& p_damParticles);
 void CreateContainer(std::vector<Vector3f>& p_boundaryParticles);
 void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryParticle, float p_particleRadius);
-
 void SubCreateContainer(std::vector<Vector3f>& p_boundaryParticles);
+
+void DataSave();
 
 FluidWorld* world;
 FluidWorld* subWorld;
@@ -38,9 +39,9 @@ const float coarseR = 0.05f;
 const float fineR = coarseR * 0.5f;
 bool doPause = true;
 
-int damWidth = 5.0f;
-int damHeight = 5.0f;
-int damDepth = 5.0f;
+int damWidth = 10.0f;
+int damHeight = 10.0f;
+int damDepth = 10.0f;
 
 float containerWidth = (damWidth + 1)*coarseR*2.0f * 5.0f;
 float containerHeight = 1.5f;
@@ -54,6 +55,8 @@ Vector3f subContainerEnd;
 GLint context_major_version, context_minor_version;
 
 int accFrameCount = 0;
+string TDPath = "./SD3/SD";
+int saveFrameLimit = 800;
 
 int main(int argc, char** argv)
 {
@@ -97,10 +100,7 @@ void timeStep()
 	{
 		if (world->GetFluidMethodNumber() == 0) // PBF case
 		{
-			world->StepPBF();
-			
-			subWorld->StepPBF();
-			
+			// PBFC simulation
 			// coarse simulation
 			world->StepPBF();
 
@@ -116,14 +116,8 @@ void timeStep()
 			// fine density relaxing and update
 			subWorld->StepPBFonFine2();
 
-
-
-
-
-
-			//fb.InterpolateVelocity(world, subWorld);
-			//world->StepPBF();
-			//subWorld->StepPBFonFine();
+			// Data save
+			DataSave();
 		}
 		else if (world->GetFluidMethodNumber() == 1) // IISPH case
 		{
@@ -137,7 +131,7 @@ void timeStep()
 		}
 		else if (world->GetFluidMethodNumber() == 2) // WCSPH case
 		{
-			accFrameCount++;
+			
 
 			//if (accFrameCount % 10 == 0)
 			{
@@ -154,27 +148,30 @@ void timeStep()
 			//	subWorld->StepWCSPH();
 			//}
 			
-			/*
-			if (world->accFrameCount % 10 == -1)
-			{
-				fb.NeighborSearchBTWTwoRes(world, subWorld);
+			
+			//if (world->accFrameCount % 10 == -1)
+			//{
+				//fb.NeighborSearchBTWTwoRes(world, subWorld);
 
-				subWorld->StepWCSPHonFine1();
-				world->StepWCSPHonCoarse1();
-				fb.InterpolateWCSPH(world, subWorld, false);
-				world->StepWCSPHonCoarse2();
-				subWorld->StepWCSPHonFine2();
-				
-			}
-			else
-			{
-				world->StepWCSPH();
-				subWorld->StepWCSPH();
-			}
-			*/
+				//subWorld->StepWCSPHonFine1();
+				//world->StepWCSPHonCoarse1();
+				//fb.InterpolateWCSPH(world, subWorld, false);
+				//world->StepWCSPHonCoarse2();
+				//subWorld->StepWCSPHonFine2();	
+			//}
+			//else
+			//{
+			//	world->StepWCSPH();
+			//	subWorld->StepWCSPH();
+			//}
+			
 		}
 	}
-	doPause = !doPause;
+	if (accFrameCount > saveFrameLimit)
+	{
+		doPause = !doPause;
+	}
+	accFrameCount++;
 }
 
 void reset()
@@ -257,6 +254,7 @@ void buildModel()
 	CreateBreakingDam(damParticles);
 	
 	world = new FluidWorld();
+	world->SetTimeStep(0.01f);
 	world->CreateParticles(damParticles, boundaryParticles, coarseR);
 	
 	// sub domain creation
@@ -266,6 +264,7 @@ void buildModel()
 	SubCreateContainer(subBoundaryParticles);
 
 	subWorld = new FluidWorld();
+	subWorld->SetTimeStep(0.01f);
 	subWorld->CreateParticles(subDamParticles, subBoundaryParticles, fineR);
 
 	fb.CreateFlowBoundary(containerStart, containerEnd, fineR);
@@ -273,6 +272,7 @@ void buildModel()
 	fb.SetFluidThreshold(0.35f);
 
 	fb.CreateFinePs(world, subWorld);
+	printf("coarse: %d, fine : %d\n", world->GetNumOfParticles(), subWorld->GetNumOfParticles());
 }
 
 void cleanup()
@@ -373,7 +373,6 @@ void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryPa
 		}
 	}
 }
-
 void SubCreateContainer(std::vector<Vector3f>& p_boundaryParticles)
 {
 	float x1 = -containerWidth / 2.0f;
@@ -403,4 +402,72 @@ void SubCreateContainer(std::vector<Vector3f>& p_boundaryParticles)
 	AddWall(Vector3f(x1, y1, z1), Vector3f(x2, y2, z1), p_boundaryParticles, fineR);
 	// Front
 	AddWall(Vector3f(x1, y1, z2), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
+}
+
+void DataSave()
+{
+	std::vector<FParticle*>& fineP = subWorld->GetParticleList();
+
+	string frameIdx = std::to_string(accFrameCount) + ".dat";
+	string tgtFileName = TDPath + frameIdx;
+	FILE* fp = fopen(tgtFileName.c_str(), "wb");
+
+	float fbuf[3];
+	int ibuf[1];
+
+	for (int i = 0; i < fineP.size(); i++)
+	{
+		// fine's deltaP
+		Vector3f deltaP = fineP[i]->m_curPosition - fineP[i]->m_tempPosition;
+		fbuf[0] = deltaP[0]; fbuf[1] = deltaP[1]; fbuf[2] = deltaP[2];
+		fwrite(fbuf, sizeof(float), 3, fp);
+
+		// fine's numOfNeighbors of coarse fluid particle
+		ibuf[0] = fb.m_trainData[i].size();
+		fwrite(ibuf, sizeof(int), 1, fp);
+
+		for (int j = 0; j < ibuf[0]; j++)
+		{
+			Vector3f& RVec = fb.m_trainData[i][j].RVec;
+			Vector3f& RVel = fb.m_trainData[i][j].RVel;
+			float& weight = fb.m_trainData[i][j].weight;
+
+			// weight
+			fbuf[0] = weight;
+			fwrite(fbuf, sizeof(float), 1, fp);
+
+			// r
+			fbuf[0] = RVec[0]; fbuf[1] = RVec[1]; fbuf[2] = RVec[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+
+			// RVel : coarse's Vel - fine's Vel
+			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+		}
+
+		// fine's numOfNeighbors of coarse boundary particle
+		ibuf[0] = fb.m_trainDataForBoundary[i].size();
+		fwrite(ibuf, sizeof(int), 1, fp);
+
+		for (int j = 0; j < ibuf[0]; j++)
+		{
+			Vector3f& RVec = fb.m_trainDataForBoundary[i][j].RVec;
+			Vector3f& RVel = fb.m_trainDataForBoundary[i][j].RVel;
+			float& weight = fb.m_trainDataForBoundary[i][j].weight;
+
+			// weight
+			fbuf[0] = weight;
+			fwrite(fbuf, sizeof(float), 1, fp);
+
+			// r
+			fbuf[0] = RVec[0]; fbuf[1] = RVec[1]; fbuf[2] = RVec[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+
+			// RVel : coarse's Vel - fine's Vel
+			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+		}
+	}
+
+	fclose(fp);
 }

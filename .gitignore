@@ -151,3 +151,6 @@ IISPH/ReadMe.txt
 PositionBasedFluid/x64/Release/IISPH.obj
 PositionBasedFluid/x64/Release/PBF.obj
 PositionBasedFluid/x64/Release/WCSPH.obj
+*.dat
+*.txt
+FluidSimulationWithOPT/x64/Release/DataParse.obj

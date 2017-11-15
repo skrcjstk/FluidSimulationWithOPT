@@ -23,6 +23,8 @@ public:
 	std::vector<unsigned int> m_neighborList;
 	std::vector<unsigned int> m_neighborBoundaryList;
 
+	Vector3f m_tempPosition;
+
 	bool m_interpolated = false;
 };
 
