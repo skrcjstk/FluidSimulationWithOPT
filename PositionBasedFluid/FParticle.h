@@ -24,6 +24,7 @@ public:
 	std::vector<unsigned int> m_neighborBoundaryList;
 
 	Vector3f m_tempPosition;
+	Vector3f m_tempVelocity;
 
 	bool m_interpolated = false;
 };

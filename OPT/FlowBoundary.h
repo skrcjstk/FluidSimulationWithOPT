@@ -72,12 +72,14 @@ public:
 	void CreateFlowBoundary(Vector3f start, Vector3f end, float p_fineR);
 	void SearchBoundaryNeighbor(std::vector<Vector3f>& p_boundaryParticles, float p_fineR);
 	void SetFluidThreshold(float p_threshold);
+	void SetParticleRadius(float p_fineR);
 	
 	std::vector<GridCell>& GetFlowBoundary()	{	return m_boundary;	}
 	int GetBoundarySize() { return m_boundarySize; }
 	float GetGridSize() { return m_gridSize; }
 
 	void CreateFinePs(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void InitializeDataStructure(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void NeighborSearchBTWTwoRes(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	
 	void InterpolateVelocity(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
@@ -95,6 +97,7 @@ public:
 	// for TrainingData
 	std::vector<std::vector<TrainData>> m_trainData;
 	std::vector<std::vector<TrainData>> m_trainDataForBoundary;
+	std::vector<std::vector<TrainData>> m_trainDataForFineNeighbor;
 
 private:
 	void CreateBoundaryWall(Vector3f p_min, Vector3f p_max);

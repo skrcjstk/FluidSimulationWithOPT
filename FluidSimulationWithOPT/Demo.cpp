@@ -10,6 +10,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define ENV_LOAD
+
+
+
 using namespace PBD;
 using namespace Eigen;
 using namespace std;
@@ -24,6 +28,7 @@ void cleanup();
 Primitive spherePrimiCoarse, spherePrimiFine;
 Primitive boxPrimi;
 
+void LoadContainerAndFluidDam(string p_path, std::vector<Vector3f>& p_boundaryParticles, std::vector<Vector3f>& p_damParticles, float& p_radius);
 void CreateBreakingDam(std::vector<Vector3f>& p_damParticles);
 void CreateContainer(std::vector<Vector3f>& p_boundaryParticles);
 void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryParticle, float p_particleRadius);
@@ -35,8 +40,8 @@ FluidWorld* world;
 FluidWorld* subWorld;
 FlowBoundary fb;
 
-const float coarseR = 0.05f;
-const float fineR = coarseR * 0.5f;
+float coarseR = 0.05f;
+float fineR = coarseR * 0.5f;
 bool doPause = true;
 
 int damWidth = 10.0f;
@@ -55,8 +60,11 @@ Vector3f subContainerEnd;
 GLint context_major_version, context_minor_version;
 
 int accFrameCount = 0;
-string TDPath = "./SD3/SD";
+string TDPath = "./PBFC_SD5/SD";
 int saveFrameLimit = 800;
+
+string coarseEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_coarse.dat";
+string fineEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_fine.dat";
 
 int main(int argc, char** argv)
 {
@@ -117,7 +125,7 @@ void timeStep()
 			subWorld->StepPBFonFine2();
 
 			// Data save
-			DataSave();
+			//DataSave();
 		}
 		else if (world->GetFluidMethodNumber() == 1) // IISPH case
 		{
@@ -250,28 +258,45 @@ void buildModel()
 	std::vector<Vector3f> boundaryParticles;
 	std::vector<Vector3f> damParticles;
 	
+#ifndef ENV_LOAD
 	CreateContainer(boundaryParticles);
 	CreateBreakingDam(damParticles);
-	
+#else
+	LoadContainerAndFluidDam(coarseEnvPath, boundaryParticles, damParticles, coarseR);
+#endif
+		
 	world = new FluidWorld();
 	world->SetTimeStep(0.01f);
 	world->CreateParticles(damParticles, boundaryParticles, coarseR);
 	
+
 	// sub domain creation
 	std::vector<Vector3f> subDamParticles;
 	std::vector<Vector3f> subBoundaryParticles;
-	
-	SubCreateContainer(subBoundaryParticles);
 
+#ifndef ENV_LOAD
+	SubCreateContainer(subBoundaryParticles);
+#else
+	LoadContainerAndFluidDam(fineEnvPath, subBoundaryParticles, subDamParticles, fineR);
+#endif
+	
 	subWorld = new FluidWorld();
 	subWorld->SetTimeStep(0.01f);
 	subWorld->CreateParticles(subDamParticles, subBoundaryParticles, fineR);
 
+#ifndef ENV_LOAD
+	// FlowBoundary Setting and create fine ps
 	fb.CreateFlowBoundary(containerStart, containerEnd, fineR);
 	fb.SearchBoundaryNeighbor(subBoundaryParticles, fineR);
 	fb.SetFluidThreshold(0.35f);
 
 	fb.CreateFinePs(world, subWorld);
+#else
+	// setting smoothing length
+	fb.SetParticleRadius(fineR);
+#endif
+
+	fb.InitializeDataStructure(world, subWorld);
 	printf("coarse: %d, fine : %d\n", world->GetNumOfParticles(), subWorld->GetNumOfParticles());
 }
 
@@ -404,6 +429,56 @@ void SubCreateContainer(std::vector<Vector3f>& p_boundaryParticles)
 	AddWall(Vector3f(x1, y1, z2), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
 }
 
+void LoadContainerAndFluidDam(string path, std::vector<Vector3f>& p_boundaryParticles, std::vector<Vector3f>& p_damParticles, float& p_radius)
+{
+	FILE* fpEnv = fopen(path.c_str(), "rb");
+
+	unsigned int intBuf[1];
+	float floatBuf[3];
+
+	// radius 
+	fread(floatBuf, sizeof(float), 1, fpEnv);
+	printf("particle Radius : %f\n", floatBuf[0]);
+	p_radius = floatBuf[0];
+
+	// total boundary particles
+	fread(intBuf, sizeof(int), 1, fpEnv);
+	printf("nBoundaryParticles : %d\n", intBuf[0]);
+	
+
+	// nBoundary objects
+	fread(intBuf, sizeof(int), 1, fpEnv);
+	printf("nBoundary Objects : %d\n", intBuf[0]);
+	int nBObjects = intBuf[0];
+
+	for (int i = 0; i < nBObjects; i++)
+	{
+		fread(intBuf, sizeof(int), 1, fpEnv);
+		printf("(%d) nBoundary particles : %d\n", i, intBuf[0]);
+		int nBParticles = intBuf[0];
+
+		for (int j = 0; j < nBParticles; j++)
+		{
+			fread(floatBuf, sizeof(float), 3, fpEnv);
+			p_boundaryParticles.push_back(Vector3f(floatBuf[0], floatBuf[1], floatBuf[2]));
+		}
+	}
+
+	// nFluid particles
+	fread(intBuf, sizeof(int), 1, fpEnv);
+	printf("nFluid Particles : %d\n", intBuf[0]);
+	int nFParticles = intBuf[0];
+
+	for (int i = 0; i < nFParticles; i++)
+	{
+		fread(floatBuf, sizeof(float), 3, fpEnv);
+		p_damParticles.push_back(Vector3f(floatBuf[0], floatBuf[1], floatBuf[2]));
+	}
+	
+	fclose(fpEnv);
+}
+
+
 void DataSave()
 {
 	std::vector<FParticle*>& fineP = subWorld->GetParticleList();
@@ -417,8 +492,13 @@ void DataSave()
 
 	for (int i = 0; i < fineP.size(); i++)
 	{
-		// fine's deltaP
+		// fine's GT deltaP
 		Vector3f deltaP = fineP[i]->m_curPosition - fineP[i]->m_tempPosition;
+		fbuf[0] = deltaP[0]; fbuf[1] = deltaP[1]; fbuf[2] = deltaP[2];
+		fwrite(fbuf, sizeof(float), 3, fp);
+
+		// fine's temp deltaP
+		deltaP = fineP[i]->m_tempPosition - fineP[i]->m_oldPosition;
 		fbuf[0] = deltaP[0]; fbuf[1] = deltaP[1]; fbuf[2] = deltaP[2];
 		fwrite(fbuf, sizeof(float), 3, fp);
 
@@ -440,11 +520,36 @@ void DataSave()
 			fbuf[0] = RVec[0]; fbuf[1] = RVec[1]; fbuf[2] = RVec[2];
 			fwrite(fbuf, sizeof(float), 3, fp);
 
-			// RVel : coarse's Vel - fine's Vel
+			// deltaP : coarse's curPos - coarse's oldPos
 			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
 			fwrite(fbuf, sizeof(float), 3, fp);
 		}
+		
+		/*
+		// fine's numOfNeighbors of fine fluid particle
+		ibuf[0] = fb.m_trainDataForFineNeighbor[i].size();
+		fwrite(ibuf, sizeof(int), 1, fp);
 
+		for (int j = 0; j < ibuf[0]; j++)
+		{
+			Vector3f RVec = fb.m_trainDataForFineNeighbor[i][j].RVec;
+			Vector3f RVel = fb.m_trainDataForFineNeighbor[i][j].RVel;
+			float weight = fb.m_trainDataForFineNeighbor[i][j].weight;
+
+			// weight
+			fbuf[0] = weight;
+			fwrite(fbuf, sizeof(float), 1, fp);
+
+			// r
+			fbuf[0] = RVec[0]; fbuf[1] = RVec[1]; fbuf[2] = RVec[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+
+			// deltaP : coarse's curPos - coarse's oldPos
+			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+		}
+		*/
+		
 		// fine's numOfNeighbors of coarse boundary particle
 		ibuf[0] = fb.m_trainDataForBoundary[i].size();
 		fwrite(ibuf, sizeof(int), 1, fp);
@@ -467,6 +572,7 @@ void DataSave()
 			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
 			fwrite(fbuf, sizeof(float), 3, fp);
 		}
+		
 	}
 
 	fclose(fp);

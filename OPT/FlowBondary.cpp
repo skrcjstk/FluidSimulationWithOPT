@@ -13,6 +13,14 @@ void FlowBoundary::CreateFlowBoundary(Vector3f start, Vector3f end, float p_fine
 	k.SetSmoothingRadius(4.0f * coarseR);
 }
 
+void FlowBoundary::SetParticleRadius(float p_fineR)
+{
+	m_gridSize = 2.0f * p_fineR;
+
+	float coarseR = 2.0f * p_fineR;
+	k.SetSmoothingRadius(4.0f * coarseR);
+}
+
 void FlowBoundary::SetFluidThreshold(float p_thr)
 {
 	m_fThr = p_thr;
@@ -79,7 +87,7 @@ void FlowBoundary::CreateFinePs(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 
 	for (int i = 0; i < m_boundarySize; i++)
 		m_boundary[i].m_inFluid = false;
-		
+
 	for (int i = 0; i < m_boundarySize; i++) {
 		float m_fluidRatio = 0.0f;
 		for (int j = 0; j < coarseP.size(); j++) {
@@ -122,14 +130,17 @@ void FlowBoundary::CreateFinePs(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 				}
 			}
 		}
-		if(m_fluidRatio >= m_fThr)
+		if (m_fluidRatio >= m_fThr)
 			m_boundary[i].m_inFluid = true;
 	}
-	
+
 	for (int i = 0; i < m_boundarySize; i++)
 		if (m_boundary[i].m_inFluid == true)
 			p_subWorld->AddFParticle(m_boundary[i].m_centerPosition, Vector3f(0.0f, 0.0f, 0.0f));
+}
 
+void FlowBoundary::InitializeDataStructure(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
+{
 	m_neighborListBTWforFine.resize(p_subWorld->GetNumOfParticles());
 	m_tempVelforCoarse.resize(p_mainWorld->GetNumOfParticles());
 	
@@ -147,6 +158,7 @@ void FlowBoundary::CreateFinePs(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 
 	m_trainData.resize(p_subWorld->GetNumOfParticles());
 	m_trainDataForBoundary.resize(p_subWorld->GetNumOfParticles());
+	m_trainDataForFineNeighbor.resize(p_subWorld->GetNumOfParticles());
 }
 
 void FlowBoundary::NeighborSearchBTWTwoRes(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
@@ -540,6 +552,8 @@ void FlowBoundary::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld*
 		m_trainData[i].resize(0);
 		m_trainDataForBoundary[i].clear();
 		m_trainDataForBoundary[i].resize(0);
+		m_trainDataForFineNeighbor[i].clear();
+		m_trainDataForFineNeighbor[i].resize(0);
 	}
 
 	for (int i = 0; i < coarseP.size(); i++)
@@ -560,7 +574,7 @@ void FlowBoundary::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld*
 				TrainData a;
 				a.weight = k.Cubic_Kernel(r);
 				a.RVec = coarsePos - finePos;
-				a.RVel = coarseP[i]->m_velocity - fineP[j]->m_velocity;
+				a.RVel = coarseP[i]->m_curPosition - coarseP[i]->m_oldPosition;
 				m_trainData[j].push_back(a);
 			}
 		}
@@ -588,11 +602,27 @@ void FlowBoundary::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld*
 				TrainData a;
 				a.weight = k.Cubic_Kernel(r);
 				a.RVec = coarsePos - finePos;
-				a.RVel = - fineP[j]->m_velocity;
+				a.RVel = Vector3f(0.0f, 0.0f, 0.0f);
 				m_trainDataForBoundary[j].push_back(a);
 			}
 		}
 	}
+
+	// trainDataForFineNeighbor
+	for (int i = 0; i < fineP.size(); i++)
+	{
+		for (int j = 0; j < fineP[i]->m_neighborList.size(); j++)
+		{
+			TrainData a;
+			unsigned int idx = fineP[i]->m_neighborList[j];
+			
+			a.RVec = fineP[idx]->m_curPosition - fineP[i]->m_curPosition; 
+			a.weight = k.Cubic_Kernel(a.RVec);
+			a.RVel = fineP[idx]->m_curPosition - fineP[idx]->m_oldPosition;
+			m_trainDataForFineNeighbor[i].push_back(a);
+		}
+	}
+
 }
 void FlowBoundary::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 {

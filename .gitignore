@@ -154,3 +154,5 @@ PositionBasedFluid/x64/Release/WCSPH.obj
 *.dat
 *.txt
 FluidSimulationWithOPT/x64/Release/DataParse.obj
+FluidSimulationWithOPT/ObstacleScenes/171124/DamBreakModelDragons_coarse.json
+FluidSimulationWithOPT/ObstacleScenes/171124/DamBreakModelDragons_fine.json
