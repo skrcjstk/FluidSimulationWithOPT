@@ -10,9 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ENV_LOAD
-
-
+//#define ENV_LOAD
 
 using namespace PBD;
 using namespace Eigen;
@@ -22,35 +20,38 @@ void timeStep();
 void reset();
 void selection(const Eigen::Vector2i &start, const Eigen::Vector2i &end);
 void render();
-void buildModel();
+void buildModel_EnvLoad();
+void buildModel_BreakingDam();
 void cleanup();
-
-Primitive spherePrimiCoarse, spherePrimiFine;
-Primitive boxPrimi;
-
 void LoadContainerAndFluidDam(string p_path, std::vector<Vector3f>& p_boundaryParticles, std::vector<Vector3f>& p_damParticles, float& p_radius);
-void CreateBreakingDam(std::vector<Vector3f>& p_damParticles);
-void CreateContainer(std::vector<Vector3f>& p_boundaryParticles);
+void CreateCoarseBreakingDam(std::vector<Vector3f>& p_damParticles);
+void CreateFineBreakingDam(std::vector<Vector3f>& p_damParticles);
+void CreateCoarseContainer(std::vector<Vector3f>& p_boundaryParticles);
 void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryParticle, float p_particleRadius);
-void SubCreateContainer(std::vector<Vector3f>& p_boundaryParticles);
-
+void CreateFineContainer(std::vector<Vector3f>& p_boundaryParticles);
 void DataSave();
+
+Primitive spherePrimiCoarse, spherePrimiFine, boxPrimi;
 
 FluidWorld* world;
 FluidWorld* subWorld;
 FlowBoundary fb;
 
-float coarseR = 0.05f;
-float fineR = coarseR * 0.5f;
+float fineR = 0.025f;
+float coarseR = 2 * fineR;
 bool doPause = true;
 
-int damWidth = 10.0f;
-int damHeight = 10.0f;
-int damDepth = 10.0f;
+int fineDamWidth = 20;
+int fineDamHeight = 20;
+int fineDamDepth = 20;
+int coarseDamWidth = fineDamWidth / 2;
+int coarseDamHeight = fineDamHeight / 2;
+int coarseDamDepth = fineDamDepth / 2;
 
-float containerWidth = (damWidth + 1)*coarseR*2.0f * 5.0f;
+float containerWidth = (coarseDamWidth + 1) * coarseR * 2.0f * 5.0f;
 float containerHeight = 1.5f;
-float containerDepth = (damDepth + 1)*coarseR*2.0f;
+float containerDepth = (coarseDamDepth + 1) * coarseR * 2.0f;
+
 Vector3f containerStart;
 Vector3f containerEnd;
 
@@ -60,8 +61,8 @@ Vector3f subContainerEnd;
 GLint context_major_version, context_minor_version;
 
 int accFrameCount = 0;
-string TDPath = "./PBFC_SD5/SD";
-int saveFrameLimit = 800;
+string TDPath = "./PBFC_SD8/SD";
+int saveFrameLimit = 1000;
 
 string coarseEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_coarse.dat";
 string fineEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_fine.dat";
@@ -82,7 +83,11 @@ int main(int argc, char** argv)
 
 	TwAddVarRW(MiniGL::getTweakBar(), "Pause", TW_TYPE_BOOLCPP, &doPause, " label='Pause' group=Simulation key=SPACE ");
 
-	buildModel();
+#ifndef ENV_LOAD
+	buildModel_BreakingDam();
+#elif
+	buildModel_EnvLoad();
+#endif
 
 	if (context_major_version >= 3)
 	{
@@ -125,7 +130,7 @@ void timeStep()
 			subWorld->StepPBFonFine2();
 
 			// Data save
-			//DataSave();
+			DataSave();
 		}
 		else if (world->GetFluidMethodNumber() == 1) // IISPH case
 		{
@@ -185,12 +190,9 @@ void timeStep()
 void reset()
 {
 	world->Reset();
-	subWorld->DeleteAll();
-	fb.CreateFinePs(world, subWorld);
+	subWorld->Reset();
 }
-
 void selection(const Eigen::Vector2i &start, const Eigen::Vector2i &end) {}
-
 void render()
 {
 	MiniGL::coordinateSystem();
@@ -252,54 +254,58 @@ void render()
 	}
 }
 
-void buildModel()
+void buildModel_EnvLoad()
 {
 	// main domain creation
 	std::vector<Vector3f> boundaryParticles;
 	std::vector<Vector3f> damParticles;
-	
-#ifndef ENV_LOAD
-	CreateContainer(boundaryParticles);
-	CreateBreakingDam(damParticles);
-#else
 	LoadContainerAndFluidDam(coarseEnvPath, boundaryParticles, damParticles, coarseR);
-#endif
-		
+	
 	world = new FluidWorld();
 	world->SetTimeStep(0.01f);
 	world->CreateParticles(damParticles, boundaryParticles, coarseR);
-	
 
 	// sub domain creation
 	std::vector<Vector3f> subDamParticles;
 	std::vector<Vector3f> subBoundaryParticles;
-
-#ifndef ENV_LOAD
-	SubCreateContainer(subBoundaryParticles);
-#else
 	LoadContainerAndFluidDam(fineEnvPath, subBoundaryParticles, subDamParticles, fineR);
-#endif
+
+	subWorld = new FluidWorld();
+	subWorld->SetTimeStep(0.01f);
+	subWorld->CreateParticles(subDamParticles, subBoundaryParticles, fineR);
+
+	fb.SetParticleRadius(fineR);
+	fb.InitializeDataStructure(world, subWorld);
+	printf("coarse: %d, fine : %d\n", world->GetNumOfParticles(), subWorld->GetNumOfParticles());
+}
+
+void buildModel_BreakingDam()
+{
+	// main domain creation
+	std::vector<Vector3f> boundaryParticles;
+	std::vector<Vector3f> damParticles;
+	CreateCoarseBreakingDam(damParticles);
+	CreateCoarseContainer(boundaryParticles);
+			
+	world = new FluidWorld();
+	world->SetTimeStep(0.01f);
+	world->CreateParticles(damParticles, boundaryParticles, coarseR);
+
+	// sub domain creation
+	std::vector<Vector3f> subDamParticles;
+	std::vector<Vector3f> subBoundaryParticles;
+	CreateFineBreakingDam(subDamParticles);
+	CreateFineContainer(subBoundaryParticles);
 	
 	subWorld = new FluidWorld();
 	subWorld->SetTimeStep(0.01f);
 	subWorld->CreateParticles(subDamParticles, subBoundaryParticles, fineR);
 
-#ifndef ENV_LOAD
 	// FlowBoundary Setting and create fine ps
-	fb.CreateFlowBoundary(containerStart, containerEnd, fineR);
-	fb.SearchBoundaryNeighbor(subBoundaryParticles, fineR);
-	fb.SetFluidThreshold(0.35f);
-
-	fb.CreateFinePs(world, subWorld);
-#else
-	// setting smoothing length
 	fb.SetParticleRadius(fineR);
-#endif
-
 	fb.InitializeDataStructure(world, subWorld);
 	printf("coarse: %d, fine : %d\n", world->GetNumOfParticles(), subWorld->GetNumOfParticles());
 }
-
 void cleanup()
 {
 	if (context_major_version >= 3)
@@ -310,35 +316,65 @@ void cleanup()
 	}
 }
 
-void CreateBreakingDam(std::vector<Vector3f>& p_damParticles)
+void CreateCoarseBreakingDam(std::vector<Vector3f>& p_damParticles)
 {
-	std::cout << "Initialize fluid particles\n";
-	const float diam = 2.0f*coarseR;
-	const float startX = -0.5f*containerWidth + diam + diam;
-	const float startY = diam + diam + diam;
-	const float startZ = -0.5f*containerDepth + diam;
-	const float yshift = sqrt(3.0f) * coarseR;
+	std::cout << "Initialize coarse fluid particles\n";
+	p_damParticles.resize(coarseDamWidth*coarseDamHeight*coarseDamDepth);
 
-	p_damParticles.resize(damWidth*damHeight*damDepth);
+	float diam = 2.0f * coarseR;
+	float startX = -0.5f * containerWidth + diam + diam;
+	float startY = diam + diam + diam;
+	float startZ = -0.5f * containerDepth + diam;
+	float yshift = sqrt(3.0f) * coarseR;
 
 #pragma omp parallel default(shared)
 	{
 #pragma omp for schedule(static)  
-		for (int i = 0; i < (int)damWidth; i++)
+		for (int i = 0; i < (int)coarseDamWidth; i++)
 		{
-			for (unsigned int j = 0; j < damHeight; j++)
+			for (unsigned int j = 0; j < coarseDamHeight; j++)
 			{
-				for (unsigned int k = 0; k < damDepth; k++)
+				for (unsigned int k = 0; k < coarseDamDepth; k++)
 				{
-					p_damParticles[i*damHeight*damDepth + j*damDepth + k] = diam*Eigen::Vector3f((float)i, (float)j, (float)k) + Eigen::Vector3f(startX, startY, startZ);
+					p_damParticles[i*coarseDamHeight*coarseDamDepth + j*coarseDamDepth + k] = diam*Eigen::Vector3f((float)i, (float)j, (float)k) + Eigen::Vector3f(startX, startY, startZ);
 				}
 			}
 		}
 	}
 
-	std::cout << "Number of particles: " << damWidth*damHeight*damDepth << "\n";
+	std::cout << "Number of particles: " << p_damParticles.size() << "\n";
+
 }
-void CreateContainer(std::vector<Vector3f>& p_boundaryParticles)
+void CreateFineBreakingDam(std::vector<Vector3f>& p_damParticles)
+{
+	std::cout << "Initialize fine fluid particles\n";
+	p_damParticles.resize(fineDamWidth*fineDamHeight*fineDamDepth);
+
+	float diam = 2.0f * fineR;
+	float coarseDiam = 2.0f * coarseR;
+	float startX = -0.5f * containerWidth + coarseDiam + coarseDiam;
+	float startY = coarseDiam + coarseDiam + coarseDiam;
+	float startZ = -0.5f * containerDepth + coarseDiam;
+	float yshift = sqrt(3.0f) * fineR;
+
+#pragma omp parallel default(shared)
+	{
+#pragma omp for schedule(static)  
+		for (int i = 0; i < (int)fineDamWidth; i++)
+		{
+			for (unsigned int j = 0; j < fineDamHeight; j++)
+			{
+				for (unsigned int k = 0; k < fineDamDepth; k++)
+				{
+					p_damParticles[i*fineDamHeight*fineDamDepth + j*fineDamDepth + k] = diam*Eigen::Vector3f((float)i, (float)j, (float)k) + Eigen::Vector3f(startX, startY, startZ);
+				}
+			}
+		}
+	}
+
+	std::cout << "Number of particles: " << p_damParticles.size() << "\n";
+}
+void CreateCoarseContainer(std::vector<Vector3f>& p_boundaryParticles)
 {
 	float x1 = -containerWidth / 2.0f;
 	float x2 = containerWidth / 2.0f;
@@ -398,7 +434,7 @@ void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryPa
 		}
 	}
 }
-void SubCreateContainer(std::vector<Vector3f>& p_boundaryParticles)
+void CreateFineContainer(std::vector<Vector3f>& p_boundaryParticles)
 {
 	float x1 = -containerWidth / 2.0f;
 	float x2 = containerWidth / 2.0f;
@@ -478,7 +514,6 @@ void LoadContainerAndFluidDam(string path, std::vector<Vector3f>& p_boundaryPart
 	fclose(fpEnv);
 }
 
-
 void DataSave()
 {
 	std::vector<FParticle*>& fineP = subWorld->GetParticleList();
@@ -490,13 +525,17 @@ void DataSave()
 	float fbuf[3];
 	int ibuf[1];
 
+	// num of fine particles 
+	ibuf[0] = (int)fineP.size();
+	fwrite(ibuf, sizeof(int), 1, fp);
+
 	for (int i = 0; i < fineP.size(); i++)
 	{
 		// fine's GT deltaP
 		Vector3f deltaP = fineP[i]->m_curPosition - fineP[i]->m_tempPosition;
 		fbuf[0] = deltaP[0]; fbuf[1] = deltaP[1]; fbuf[2] = deltaP[2];
 		fwrite(fbuf, sizeof(float), 3, fp);
-
+		
 		// fine's temp deltaP
 		deltaP = fineP[i]->m_tempPosition - fineP[i]->m_oldPosition;
 		fbuf[0] = deltaP[0]; fbuf[1] = deltaP[1]; fbuf[2] = deltaP[2];
@@ -505,7 +544,6 @@ void DataSave()
 		// fine's numOfNeighbors of coarse fluid particle
 		ibuf[0] = fb.m_trainData[i].size();
 		fwrite(ibuf, sizeof(int), 1, fp);
-
 		for (int j = 0; j < ibuf[0]; j++)
 		{
 			Vector3f& RVec = fb.m_trainData[i][j].RVec;
@@ -525,31 +563,7 @@ void DataSave()
 			fwrite(fbuf, sizeof(float), 3, fp);
 		}
 		
-		/*
-		// fine's numOfNeighbors of fine fluid particle
-		ibuf[0] = fb.m_trainDataForFineNeighbor[i].size();
-		fwrite(ibuf, sizeof(int), 1, fp);
 
-		for (int j = 0; j < ibuf[0]; j++)
-		{
-			Vector3f RVec = fb.m_trainDataForFineNeighbor[i][j].RVec;
-			Vector3f RVel = fb.m_trainDataForFineNeighbor[i][j].RVel;
-			float weight = fb.m_trainDataForFineNeighbor[i][j].weight;
-
-			// weight
-			fbuf[0] = weight;
-			fwrite(fbuf, sizeof(float), 1, fp);
-
-			// r
-			fbuf[0] = RVec[0]; fbuf[1] = RVec[1]; fbuf[2] = RVec[2];
-			fwrite(fbuf, sizeof(float), 3, fp);
-
-			// deltaP : coarse's curPos - coarse's oldPos
-			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
-			fwrite(fbuf, sizeof(float), 3, fp);
-		}
-		*/
-		
 		// fine's numOfNeighbors of coarse boundary particle
 		ibuf[0] = fb.m_trainDataForBoundary[i].size();
 		fwrite(ibuf, sizeof(int), 1, fp);
@@ -569,6 +583,30 @@ void DataSave()
 			fwrite(fbuf, sizeof(float), 3, fp);
 
 			// RVel : coarse's Vel - fine's Vel
+			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+		}
+
+
+		// fine's numOfNeighbors of fine fluid particle
+		ibuf[0] = fb.m_trainDataForFineNeighbor[i].size();
+		fwrite(ibuf, sizeof(int), 1, fp);
+
+		for (int j = 0; j < ibuf[0]; j++)
+		{
+			Vector3f RVec = fb.m_trainDataForFineNeighbor[i][j].RVec;
+			Vector3f RVel = fb.m_trainDataForFineNeighbor[i][j].RVel;
+			float weight = fb.m_trainDataForFineNeighbor[i][j].weight;
+
+			// weight
+			fbuf[0] = weight;
+			fwrite(fbuf, sizeof(float), 1, fp);
+
+			// r
+			fbuf[0] = RVec[0]; fbuf[1] = RVec[1]; fbuf[2] = RVec[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+
+			// deltaP : fine's tempPos - coarse's oldPos
 			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
 			fwrite(fbuf, sizeof(float), 3, fp);
 		}

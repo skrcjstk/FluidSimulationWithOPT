@@ -589,21 +589,21 @@ void FlowBoundary::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld*
 		}
 	}
 
-	for (int i = 0; i < boundaryCoarseP.size(); i++)
+	// trainDataFor Coarse Boundary Particle 
+	for (int i = 0; i < fineP.size(); i++)
 	{
-		Vector3f& coarsePos = boundaryCoarseP[i];
-		for (int j = 0; j < fineP.size(); j++)
+		Vector3f& finePos = fineP[i]->m_curPosition;
+		for (int j = 0; j < boundaryCoarseP.size(); j++)
 		{
-			Vector3f& finePos = fineP[j]->m_curPosition;
-			Vector3f r = coarsePos - finePos;
+			Vector3f r = boundaryCoarseP[j] - finePos;
 			if (r.norm() <= searchRange)
 			{
 				// Training Data creation 
 				TrainData a;
 				a.weight = k.Cubic_Kernel(r);
-				a.RVec = coarsePos - finePos;
+				a.RVec = boundaryCoarseP[j] - finePos;
 				a.RVel = Vector3f(0.0f, 0.0f, 0.0f);
-				m_trainDataForBoundary[j].push_back(a);
+				m_trainDataForBoundary[i].push_back(a);
 			}
 		}
 	}
@@ -617,7 +617,7 @@ void FlowBoundary::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld*
 			unsigned int idx = fineP[i]->m_neighborList[j];
 			
 			a.RVec = fineP[idx]->m_curPosition - fineP[i]->m_curPosition; 
-			a.weight = k.Cubic_Kernel(a.RVec);
+			a.weight = p_subWorld->GetKernel().Cubic_Kernel(a.RVec);
 			a.RVel = fineP[idx]->m_curPosition - fineP[idx]->m_oldPosition;
 			m_trainDataForFineNeighbor[i].push_back(a);
 		}
