@@ -5,6 +5,7 @@
 #include "PrimitiveBuffer.h"
 #include "FluidWorld.h"
 #include "FlowBoundary.h"
+#include "TimerChrono.h"
 #include <Eigen/Dense>
 #include <iostream>
 #include <stdio.h>
@@ -15,6 +16,12 @@
 using namespace PBD;
 using namespace Eigen;
 using namespace std;
+
+string TDPath = "./PBFC_Scene1_SD1/SD";
+int saveFrameLimit = 800;
+string coarseEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_coarse.dat";
+string fineEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_fine.dat";
+
 
 void timeStep();
 void reset();
@@ -32,6 +39,7 @@ void CreateFineContainer(std::vector<Vector3f>& p_boundaryParticles);
 void DataSave();
 
 Primitive spherePrimiCoarse, spherePrimiFine, boxPrimi;
+TimerChrono timer;
 
 FluidWorld* world;
 FluidWorld* subWorld;
@@ -47,25 +55,18 @@ int fineDamDepth = 20;
 int coarseDamWidth = fineDamWidth / 2;
 int coarseDamHeight = fineDamHeight / 2;
 int coarseDamDepth = fineDamDepth / 2;
-
 float containerWidth = (coarseDamWidth + 1) * coarseR * 2.0f * 5.0f;
 float containerHeight = 1.5f;
 float containerDepth = (coarseDamDepth + 1) * coarseR * 2.0f;
 
 Vector3f containerStart;
 Vector3f containerEnd;
-
 Vector3f subContainerStart;
 Vector3f subContainerEnd;
 
 GLint context_major_version, context_minor_version;
 
 int accFrameCount = 0;
-string TDPath = "./PBFC_SD8/SD";
-int saveFrameLimit = 1000;
-
-string coarseEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_coarse.dat";
-string fineEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_fine.dat";
 
 int main(int argc, char** argv)
 {
@@ -85,7 +86,7 @@ int main(int argc, char** argv)
 
 #ifndef ENV_LOAD
 	buildModel_BreakingDam();
-#elif
+#else
 	buildModel_EnvLoad();
 #endif
 
@@ -115,22 +116,35 @@ void timeStep()
 		{
 			// PBFC simulation
 			// coarse simulation
+			//timer.start();
+			float deltaT = subWorld->GetTimeStep();
+			world->SetTimeStep(deltaT);
+			
 			world->StepPBF();
+			//timer.end("world's StepPBF");
 
 			// fine advection and neighbor update
+			//timer.start();
 			subWorld->StepPBFonFine1();
+			//timer.end("subWorld's StepPBFFine1");
 			
 			// neighbor update between fine and coarse
+			//timer.start();
 			fb.NeighborBTWTwoResForPBFC(world, subWorld);
+			//timer.end("subWorld's NeighborUpdate");
 
 			// update lambda for coarse & solve density and velocity constraints
+			//timer.start();
 			fb.SolvePBFCConstaints(world, subWorld);
+			//timer.end("subWorld's SolvePBFC");
 
 			// fine density relaxing and update
+			//timer.start();
 			subWorld->StepPBFonFine2();
+			//timer.end("subWorld's StepPBFFine2");
 
 			// Data save
-			DataSave();
+			//DataSave();
 		}
 		else if (world->GetFluidMethodNumber() == 1) // IISPH case
 		{
@@ -278,7 +292,6 @@ void buildModel_EnvLoad()
 	fb.InitializeDataStructure(world, subWorld);
 	printf("coarse: %d, fine : %d\n", world->GetNumOfParticles(), subWorld->GetNumOfParticles());
 }
-
 void buildModel_BreakingDam()
 {
 	// main domain creation
@@ -411,9 +424,9 @@ void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryPa
 	Vector3f diff = p_max - p_min;
 	float diameter = 2 * p_particleRadius;
 
-	unsigned int countX = (unsigned int)(diff[0] / diameter) + 1;
-	unsigned int countY = (unsigned int)(diff[1] / diameter) + 1;
-	unsigned int countZ = (unsigned int)(diff[2] / diameter) + 1;
+	int countX = (int)(diff[0] / diameter) + 1;
+	int countY = (int)(diff[1] / diameter) + 1;
+	int countZ = (int)(diff[2] / diameter) + 1;
 
 	unsigned int startIndex = p_boundaryParticle.size();
 	p_boundaryParticle.resize(startIndex + countX*countY*countZ);
@@ -421,11 +434,11 @@ void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryPa
 #pragma omp parallel default(shared)
 	{
 #pragma omp for schedule(static)  
-		for (unsigned int i = 0; i < countX; i++)
+		for (int i = 0; i < countX; i++)
 		{
-			for (unsigned int j = 0; j < countY; j++)
+			for (int j = 0; j < countY; j++)
 			{
-				for (unsigned int k = 0; k < countZ; k++)
+				for (int k = 0; k < countZ; k++)
 				{
 					const Vector3f position = p_min + Vector3f(i*diameter, j*diameter, k*diameter);
 					p_boundaryParticle[startIndex + i*countY*countZ + j*countZ + k] = position;

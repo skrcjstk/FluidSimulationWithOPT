@@ -21,8 +21,8 @@ FluidWorld::~FluidWorld() {}
 
 void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vector<Vector3f>& p_containerParticles, float p_particleRadius)
 {
-	m_numOfParticles = (unsigned int)p_damParticles.size();
-	m_numOfBoundaryParticles = (unsigned int)p_containerParticles.size();
+	m_numOfParticles = p_damParticles.size();
+	m_numOfBoundaryParticles = p_containerParticles.size();
 	m_particleRadius = p_particleRadius;
 	m_smoothingLength = 4.0f * m_particleRadius;
 	k.SetSmoothingRadius(m_smoothingLength);
@@ -48,7 +48,7 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 	{
 		// dam particles creation
 #pragma omp for schedule(static)
-		for (unsigned int i = 0; i < m_numOfParticles; i++)
+		for (int i = 0; i < m_numOfParticles; i++)
 		{
 			m_particles[i] = new FParticle();
 			m_particles[i]->m_mass = 0.8f * m_restDensity * diameter * diameter * diameter;
@@ -61,17 +61,17 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 
 		// copy boundary particles
 #pragma omp for schedule(static)
-		for (unsigned int i = 0; i < m_numOfBoundaryParticles; i++)
+		for (int i = 0; i < m_numOfBoundaryParticles; i++)
 		{
 			m_boundaryParticles[i] = p_containerParticles[i];
 		}
 
 		// boudary particles Psi value 
 #pragma omp for schedule(static)
-		for (unsigned int i = 0; i < m_numOfBoundaryParticles; i++)
+		for (int i = 0; i < m_numOfBoundaryParticles; i++)
 		{
 			float delta = k.Cubic_Kernel0();
-			for (unsigned int j = 0; j < m_numOfBoundaryParticles; j++)
+			for (int j = 0; j < m_numOfBoundaryParticles; j++)
 			{
 				Vector3f r = m_boundaryParticles[i] - m_boundaryParticles[j];
 				if (i != j && r.norm() <= m_smoothingLength)
@@ -89,7 +89,7 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 }
 void FluidWorld::Reset()
 {
-	for (int i = 0; i < (int)m_numOfParticles; i++)
+	for (int i = 0; i < m_numOfParticles; i++)
 	{
 		m_particles[i]->m_acceleration.setZero();
 		m_particles[i]->m_velocity.setZero();
@@ -157,20 +157,20 @@ void FluidWorld::NeighborListUpdate()
 #pragma omp parallel default(shared)
 	{
 #pragma omp for schedule(static)
-		for (unsigned int i = 0; i < m_numOfParticles; i++)
+		for (int i = 0; i < m_numOfParticles; i++)
 		{
 			m_particles[i]->m_neighborList.clear();
 			m_particles[i]->m_neighborBoundaryList.clear();
 			m_particles[i]->m_neighborList.resize(0);
 			m_particles[i]->m_neighborBoundaryList.resize(0);
 
-			for (unsigned int j = 0; j < m_numOfParticles; j++)
+			for (int j = 0; j < m_numOfParticles; j++)
 			{
 				Vector3f r = m_particles[i]->m_curPosition - m_particles[j]->m_curPosition;
 				if (i != j && r.norm() <= m_smoothingLength)
 					m_particles[i]->m_neighborList.push_back(j);
 			}
-			for (unsigned int j = 0; j < m_numOfBoundaryParticles; j++)
+			for (int j = 0; j < m_numOfBoundaryParticles; j++)
 			{
 				Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[j];
 				if (r.norm() <= m_smoothingLength)
@@ -191,17 +191,17 @@ void FluidWorld::ComputeDensities()
 			// Compute current density for particle i
 			m_particles[i]->m_density = m_particles[i]->m_mass * k.Cubic_Kernel0();
 
-			for (unsigned int j = 0; j < m_particles[i]->m_neighborList.size(); j++)
+			for (int j = 0; j < m_particles[i]->m_neighborList.size(); j++)
 			{
-				unsigned int idx = m_particles[i]->m_neighborList[j];
+				int idx = m_particles[i]->m_neighborList[j];
 				Vector3f r = m_particles[i]->m_curPosition - m_particles[idx]->m_curPosition;
 
 				m_particles[i]->m_density += m_particles[idx]->m_mass * k.Cubic_Kernel(r);
 			}
 
-			for (unsigned int j = 0; j < m_particles[i]->m_neighborBoundaryList.size(); j++)
+			for (int j = 0; j < m_particles[i]->m_neighborBoundaryList.size(); j++)
 			{
-				unsigned int idx = m_particles[i]->m_neighborBoundaryList[j];
+				int idx = m_particles[i]->m_neighborBoundaryList[j];
 				Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[idx];
 				m_particles[i]->m_density += m_boundaryPsi[idx] * k.Cubic_Kernel(r);
 			}
@@ -218,7 +218,7 @@ void FluidWorld::UpdateTimeStepSizeCFL()
 	float maxVel = 0.1;
 	unsigned int numParticles = m_numOfParticles;
 	float diameter = 2.0*radius;
-	for (unsigned int i = 0; i < numParticles; i++)
+	for (int i = 0; i < numParticles; i++)
 	{
 		Vector3f vel = GetParticle(i)->m_velocity;
 		Vector3f accel = GetParticle(i)->m_acceleration;
@@ -282,53 +282,68 @@ void FluidWorld::StepPBF()
 	float h = m_timeStep;
 
 	// clear ExternForce
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
+#pragma omp parallel default(shared)
 	{
-		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
-
-		if (m_particles[i]->m_mass != 0.0f)
+#pragma omp for schedule(static)  
+		for (int i = 0; i < m_numOfParticles; i++)
 		{
-			m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
-			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+			m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+			m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
+
+			if (m_particles[i]->m_mass != 0.0f)
+			{
+				m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
+				m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+			}
 		}
 	}
 
 	NeighborListUpdate();
 	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 		
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
+#pragma omp parallel default(shared)
 	{
-		m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+#pragma omp for schedule(static)  
+		for (int i = 0; i < m_numOfParticles; i++)
+		{
+			m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+		}
 	}
 
 	pbfWorld->ComputeXSPHViscosity(m_particles);
 
-	//UpdateTimeStepSizeCFL();
+	UpdateTimeStepSizeCFL();
 
 	m_accTimeIntegration += h;
 }
 void FluidWorld::StepPBFonFine()
 {
 	float h = m_timeStep;
-
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
+#pragma omp parallel default(shared)
 	{
-		//m_particles[i]->m_deltaX.setZero();
-		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
-
-		if (m_particles[i]->m_mass != 0.0f)
+#pragma omp for schedule(static)  
+		for (int i = 0; i < m_numOfParticles; i++)
 		{
-			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+			//m_particles[i]->m_deltaX.setZero();
+			m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
+
+			if (m_particles[i]->m_mass != 0.0f)
+			{
+				m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+			}
 		}
 	}
 
 	NeighborListUpdate();
 	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
+#pragma omp parallel default(shared)
 	{
-		m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+#pragma omp for schedule(static)  
+		for (int i = 0; i < m_numOfParticles; i++)
+		{
+			m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+		}
 	}
 
 	pbfWorld->ComputeXSPHViscosity(m_particles);
@@ -342,15 +357,19 @@ void FluidWorld::StepPBFonFine1()
 	float h = m_timeStep;
 
 	// clear ExternForce
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
+#pragma omp parallel default(shared)
 	{
-		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
-		if (m_particles[i]->m_mass != 0.0f)
+#pragma omp for schedule(static)  
+		for (int i = 0; i < m_numOfParticles; i++)
 		{
-			m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
-			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
-			m_particles[i]->m_tempPosition = m_particles[i]->m_curPosition;
+			m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+			m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
+			if (m_particles[i]->m_mass != 0.0f)
+			{
+				m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
+				m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+				m_particles[i]->m_tempPosition = m_particles[i]->m_curPosition;
+			}
 		}
 	}
 	NeighborListUpdate();
@@ -361,14 +380,18 @@ void FluidWorld::StepPBFonFine2()
 
 	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
 
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
+#pragma omp parallel default(shared)
 	{
-		m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+#pragma omp for schedule(static)  
+		for (int i = 0; i < m_numOfParticles; i++)
+		{
+			m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+		}
 	}
 
 	pbfWorld->ComputeXSPHViscosity(m_particles);
 
-	//UpdateTimeStepSizeCFL();
+	UpdateTimeStepSizeCFL();
 
 	m_accTimeIntegration += h;
 }
@@ -377,23 +400,33 @@ void FluidWorld::StepPBFonFine1WithTF()
 {
 	float h = m_timeStep;
 
-	// clear ExternForce
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
+#pragma omp parallel default(shared)
 	{
-		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-		m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
-		if (m_particles[i]->m_mass != 0.0f)
+		// clear ExternForce
+#pragma omp for schedule(static)  
+		for (int i = 0; i < m_numOfParticles; i++)
 		{
-			m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
-			m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+			m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+			m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
+			if (m_particles[i]->m_mass != 0.0f)
+			{
+				m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
+				m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+			}
 		}
 	}
+
+	UpdateTimeStepSizeCFL();
 }
 void FluidWorld::StepPBFonFine2WithTF()
 {
 	float h = m_timeStep;
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
-		m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+#pragma omp parallel default(shared)
+	{
+#pragma omp for schedule(static)  
+		for (int i = 0; i < m_numOfParticles; i++)
+			m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
+	}
 }
 
 

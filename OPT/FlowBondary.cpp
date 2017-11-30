@@ -30,9 +30,9 @@ void FlowBoundary::CreateBoundaryWall(Vector3f p_min, Vector3f p_max)
 {
 	Vector3f diff = p_max - p_min;
 
-	unsigned int countX = (unsigned int)(diff[0] / m_gridSize) + 1;
-	unsigned int countY = (unsigned int)(diff[1] / m_gridSize) + 1;
-	unsigned int countZ = (unsigned int)(diff[2] / m_gridSize) + 1;
+	int countX = (int)(diff[0] / m_gridSize) + 1;
+	int countY = (int)(diff[1] / m_gridSize) + 1;
+	int countZ = (int)(diff[2] / m_gridSize) + 1;
 
 	printf("Boundary Wall - diff(%f, %f, %f)\n", diff[0], diff[1], diff[2]);
 	printf("Boundary Wall - count(%d, %d, %d)\n", countX, countY, countZ);
@@ -43,11 +43,11 @@ void FlowBoundary::CreateBoundaryWall(Vector3f p_min, Vector3f p_max)
 #pragma omp parallel default(shared)
 	{
 #pragma omp for schedule(static)  
-		for (unsigned int i = 0; i < countX; i++)
+		for (int i = 0; i < countX; i++)
 		{
-			for (unsigned int j = 0; j < countY; j++)
+			for (int j = 0; j < countY; j++)
 			{
-				for (unsigned int k = 0; k < countZ; k++)
+				for (int k = 0; k < countZ; k++)
 				{
 					Vector3f position = p_min + Vector3f(i*m_gridSize, j*m_gridSize, k*m_gridSize);
 					m_boundary[startIndex + i*countY*countZ + j*countZ + k].SetValue(position, m_gridSize);
@@ -546,80 +546,87 @@ void FlowBoundary::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld*
 	std::vector<Vector3f>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
 	std::vector<Vector3f>& boundaryCoarseP = p_mainWorld->GetBoundaryParticleList();
 
-	for (int i = 0; i < fineP.size(); i++)
+#pragma omp parallel default(shared)
 	{
-		m_trainData[i].clear();
-		m_trainData[i].resize(0);
-		m_trainDataForBoundary[i].clear();
-		m_trainDataForBoundary[i].resize(0);
-		m_trainDataForFineNeighbor[i].clear();
-		m_trainDataForFineNeighbor[i].resize(0);
-	}
-
-	for (int i = 0; i < coarseP.size(); i++)
-	{
-		Vector3f& coarsePos = coarseP[i]->m_curPosition;
-
-		m_neighListwithFineP[i].clear();
-		m_neighListwithFineP[i].resize(0);
-		for (int j = 0; j < fineP.size(); j++)
+#pragma omp for schedule(static)  
+		for (int i = 0; i < fineP.size(); i++)
 		{
-			Vector3f& finePos = fineP[j]->m_curPosition;
-			Vector3f r = coarsePos - finePos;
-			if (r.norm() <= searchRange)
-			{
-				m_neighListwithFineP[i].push_back(j);
+			m_trainData[i].clear();
+			m_trainData[i].resize(0);
+			m_trainDataForBoundary[i].clear();
+			m_trainDataForBoundary[i].resize(0);
+			m_trainDataForFineNeighbor[i].clear();
+			m_trainDataForFineNeighbor[i].resize(0);
+		}
 
-				// Training Data creation 
-				TrainData a;
-				a.weight = k.Cubic_Kernel(r);
-				a.RVec = coarsePos - finePos;
-				a.RVel = coarseP[i]->m_curPosition - coarseP[i]->m_oldPosition;
-				m_trainData[j].push_back(a);
+#pragma omp for schedule(static)  
+		for (int i = 0; i < coarseP.size(); i++)
+		{
+			Vector3f& coarsePos = coarseP[i]->m_curPosition;
+
+			m_neighListwithFineP[i].clear();
+			m_neighListwithFineP[i].resize(0);
+			for (int j = 0; j < fineP.size(); j++)
+			{
+				Vector3f& finePos = fineP[j]->m_curPosition;
+				Vector3f r = coarsePos - finePos;
+				if (r.norm() <= searchRange)
+				{
+					m_neighListwithFineP[i].push_back(j);
+
+					// Training Data creation 
+					TrainData a;
+					a.weight = k.Cubic_Kernel(r);
+					a.RVec = coarsePos - finePos;
+					a.RVel = coarseP[i]->m_curPosition - coarseP[i]->m_oldPosition;
+					m_trainData[j].push_back(a);
+				}
+			}
+
+			m_neighListwithBoundaryFineP.clear();
+			m_neighListwithBoundaryFineP[i].resize(0);
+			for (int j = 0; j < boundaryFineP.size(); j++)
+			{
+				Vector3f& finePos = boundaryFineP[j];
+				if ((coarsePos - finePos).norm() <= searchRange)
+					m_neighListwithBoundaryFineP[i].push_back(j);
 			}
 		}
 
-		m_neighListwithBoundaryFineP.clear();
-		m_neighListwithBoundaryFineP[i].resize(0);
-		for (int j = 0; j < boundaryFineP.size(); j++)
+#pragma omp for schedule(static)  
+		// trainDataFor Coarse Boundary Particle 
+		for (int i = 0; i < fineP.size(); i++)
 		{
-			Vector3f& finePos = boundaryFineP[j];
-			if ((coarsePos - finePos).norm() <= searchRange)
-				m_neighListwithBoundaryFineP[i].push_back(j);
-		}
-	}
-
-	// trainDataFor Coarse Boundary Particle 
-	for (int i = 0; i < fineP.size(); i++)
-	{
-		Vector3f& finePos = fineP[i]->m_curPosition;
-		for (int j = 0; j < boundaryCoarseP.size(); j++)
-		{
-			Vector3f r = boundaryCoarseP[j] - finePos;
-			if (r.norm() <= searchRange)
+			Vector3f& finePos = fineP[i]->m_curPosition;
+			for (int j = 0; j < boundaryCoarseP.size(); j++)
 			{
-				// Training Data creation 
-				TrainData a;
-				a.weight = k.Cubic_Kernel(r);
-				a.RVec = boundaryCoarseP[j] - finePos;
-				a.RVel = Vector3f(0.0f, 0.0f, 0.0f);
-				m_trainDataForBoundary[i].push_back(a);
+				Vector3f r = boundaryCoarseP[j] - finePos;
+				if (r.norm() <= searchRange)
+				{
+					// Training Data creation 
+					TrainData a;
+					a.weight = k.Cubic_Kernel(r);
+					a.RVec = boundaryCoarseP[j] - finePos;
+					a.RVel = Vector3f(0.0f, 0.0f, 0.0f);
+					m_trainDataForBoundary[i].push_back(a);
+				}
 			}
 		}
-	}
 
-	// trainDataForFineNeighbor
-	for (int i = 0; i < fineP.size(); i++)
-	{
-		for (int j = 0; j < fineP[i]->m_neighborList.size(); j++)
+#pragma omp for schedule(static)  
+		// trainDataForFineNeighbor
+		for (int i = 0; i < fineP.size(); i++)
 		{
-			TrainData a;
-			unsigned int idx = fineP[i]->m_neighborList[j];
-			
-			a.RVec = fineP[idx]->m_curPosition - fineP[i]->m_curPosition; 
-			a.weight = p_subWorld->GetKernel().Cubic_Kernel(a.RVec);
-			a.RVel = fineP[idx]->m_curPosition - fineP[idx]->m_oldPosition;
-			m_trainDataForFineNeighbor[i].push_back(a);
+			for (int j = 0; j < fineP[i]->m_neighborList.size(); j++)
+			{
+				TrainData a;
+				unsigned int idx = fineP[i]->m_neighborList[j];
+
+				a.RVec = fineP[idx]->m_curPosition - fineP[i]->m_curPosition;
+				a.weight = p_subWorld->GetKernel().Cubic_Kernel(a.RVec);
+				a.RVel = fineP[idx]->m_curPosition - fineP[idx]->m_oldPosition;
+				m_trainDataForFineNeighbor[i].push_back(a);
+			}
 		}
 	}
 
@@ -636,102 +643,108 @@ void FlowBoundary::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_su
 	float intensityOfDensityC = 1.0f;
 	float intensityOfVelosityC = 1.0f;
 
-	for (int i = 0; i < numOfFine; i++)
+#pragma omp parallel default(shared)
 	{
-		m_PBFCData.m_corrWithDensity[i].setZero();
-		m_PBFCData.m_corrWithVelocity[i].setZero();
-		m_PBFCData.m_weightForVelocityC[i] = 0.0f;
-	}
-
-	// update CoarseLambda & correction with Density Constraint
-	for (int i = 0; i < numOfCoarse; i++)
-	{
-		m_PBFCData.m_lambdaForCoarse[i] = 0.0f;
-		Vector3f& coarsePos = coarseP[i]->m_curPosition;
-
-		float density = 0; 
-		for (int j = 0; j < m_neighListwithFineP[i].size(); j++)
+#pragma omp for schedule(static)  
+		for (int i = 0; i < numOfFine; i++)
 		{
-			int idx = m_neighListwithFineP[i][j];
-			Vector3f& finePos = fineP[idx]->m_curPosition;
-			density += fineP[idx]->m_mass * k.Cubic_Kernel(coarsePos-finePos);
-		}
-		for (int j = 0; j < m_neighListwithBoundaryFineP[i].size(); j++)
-		{
-			int idx = m_neighListwithBoundaryFineP[i][j];
-			Vector3f& finePos = boundaryFineP[idx];
-			density += p_subWorld->GetBoundaryPsi(idx) * k.Cubic_Kernel(coarsePos - finePos);
+			m_PBFCData.m_corrWithDensity[i].setZero();
+			m_PBFCData.m_corrWithVelocity[i].setZero();
+			m_PBFCData.m_weightForVelocityC[i] = 0.0f;
 		}
 
-		float C = std::max(density / mainRestDensity - 1.0f, 0.0f);
-
-		if (C != 0.0f)
+		// update CoarseLambda & correction with Density Constraint
+#pragma omp for schedule(static) 
+		for (int i = 0; i < numOfCoarse; i++)
 		{
-			// Compute gradients dC/dx_j 
-			float sum_grad_C2 = 0.0;
-			Vector3f gradC_i(0.0f, 0.0f, 0.0f);
+			m_PBFCData.m_lambdaForCoarse[i] = 0.0f;
+			Vector3f& coarsePos = coarseP[i]->m_curPosition;
 
-			for (unsigned int j = 0; j < m_neighListwithFineP[i].size(); j++)
+			float density = 0;
+			for (int j = 0; j < m_neighListwithFineP[i].size(); j++)
 			{
-				unsigned int idx = m_neighListwithFineP[i][j];
+				int idx = m_neighListwithFineP[i][j];
 				Vector3f& finePos = fineP[idx]->m_curPosition;
-
-				Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos-finePos);
-				sum_grad_C2 += gradC_j.squaredNorm();
-				gradC_i -= gradC_j;
+				density += fineP[idx]->m_mass * k.Cubic_Kernel(coarsePos - finePos);
 			}
-
-			for (unsigned int j = 0; j < m_neighListwithBoundaryFineP[i].size(); j++)
+			for (int j = 0; j < m_neighListwithBoundaryFineP[i].size(); j++)
 			{
 				int idx = m_neighListwithBoundaryFineP[i][j];
 				Vector3f& finePos = boundaryFineP[idx];
-
-				Vector3f gradC_j = -p_subWorld->GetBoundaryPsi(idx) / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
-				sum_grad_C2 += gradC_j.squaredNorm();
-				gradC_i -= gradC_j;
+				density += p_subWorld->GetBoundaryPsi(idx) * k.Cubic_Kernel(coarsePos - finePos);
 			}
 
-			sum_grad_C2 += gradC_i.squaredNorm();
+			float C = std::max(density / mainRestDensity - 1.0f, 0.0f);
 
-			// Compute lambda
-			m_PBFCData.m_lambdaForCoarse[i] = -C / (sum_grad_C2 + 1.0e-6);
-		}
-
-		// calc correction with density constraint
-		if (m_PBFCData.m_lambdaForCoarse[i] != 0.0f)
-		{
-			for (unsigned int j = 0; j < m_neighListwithFineP[i].size(); j++)
+			if (C != 0.0f)
 			{
-				unsigned int idx = m_neighListwithFineP[i][j];
+				// Compute gradients dC/dx_j 
+				float sum_grad_C2 = 0.0;
+				Vector3f gradC_i(0.0f, 0.0f, 0.0f);
+
+				for (int j = 0; j < m_neighListwithFineP[i].size(); j++)
+				{
+					int idx = m_neighListwithFineP[i][j];
+					Vector3f& finePos = fineP[idx]->m_curPosition;
+
+					Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
+					sum_grad_C2 += gradC_j.squaredNorm();
+					gradC_i -= gradC_j;
+				}
+
+				for (int j = 0; j < m_neighListwithBoundaryFineP[i].size(); j++)
+				{
+					int idx = m_neighListwithBoundaryFineP[i][j];
+					Vector3f& finePos = boundaryFineP[idx];
+
+					Vector3f gradC_j = -p_subWorld->GetBoundaryPsi(idx) / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
+					sum_grad_C2 += gradC_j.squaredNorm();
+					gradC_i -= gradC_j;
+				}
+
+				sum_grad_C2 += gradC_i.squaredNorm();
+
+				// Compute lambda
+				m_PBFCData.m_lambdaForCoarse[i] = -C / (sum_grad_C2 + 1.0e-6);
+			}
+
+			// calc correction with density constraint
+			if (m_PBFCData.m_lambdaForCoarse[i] != 0.0f)
+			{
+				for (int j = 0; j < m_neighListwithFineP[i].size(); j++)
+				{
+					int idx = m_neighListwithFineP[i][j];
+					Vector3f& finePos = fineP[idx]->m_curPosition;
+
+					Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
+					m_PBFCData.m_corrWithDensity[idx] += intensityOfDensityC * m_PBFCData.m_lambdaForCoarse[i] * gradC_j;
+				}
+			}
+
+			// calc correction with Velocity Constraint1
+			for (int j = 0; j < m_neighListwithFineP[i].size(); j++)
+			{
+				int idx = m_neighListwithFineP[i][j];
 				Vector3f& finePos = fineP[idx]->m_curPosition;
 
-				Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
-				m_PBFCData.m_corrWithDensity[idx] += intensityOfDensityC * m_PBFCData.m_lambdaForCoarse[i] * gradC_j;
+				m_PBFCData.m_corrWithVelocity[idx] += coarseP[i]->m_velocity * k.Cubic_Kernel(finePos - coarsePos);
+				m_PBFCData.m_weightForVelocityC[idx] += k.Cubic_Kernel(finePos - coarsePos);
 			}
 		}
 
-		// calc correction with Velocity Constraint1
-		for (unsigned int j = 0; j < m_neighListwithFineP[i].size(); j++)
+#pragma omp for schedule(static) 
+		// calc correction with Velocity Constraint2
+		for (int i = 0; i < numOfFine; i++)
 		{
-			unsigned int idx = m_neighListwithFineP[i][j];
-			Vector3f& finePos = fineP[idx]->m_curPosition;
+			if (m_PBFCData.m_corrWithVelocity[i].norm() != 0.0f)
+			{
+				m_PBFCData.m_corrWithVelocity[i] = m_PBFCData.m_corrWithVelocity[i] / m_PBFCData.m_weightForVelocityC[i];
+				m_PBFCData.m_corrWithVelocity[i] = intensityOfVelosityC * p_subWorld->GetTimeStep()
+					* (m_PBFCData.m_corrWithVelocity[i] - fineP[i]->m_velocity);
+			}
 
-			m_PBFCData.m_corrWithVelocity[idx] += coarseP[i]->m_velocity * k.Cubic_Kernel(finePos - coarsePos);
-			m_PBFCData.m_weightForVelocityC[idx] += k.Cubic_Kernel(finePos - coarsePos);
+			fineP[i]->m_curPosition += m_PBFCData.m_corrWithVelocity[i] + m_PBFCData.m_corrWithDensity[i];
 		}
-	}
-	
-	// calc correction with Velocity Constraint2
-	for (int i = 0; i < numOfFine; i++)
-	{
-		if (m_PBFCData.m_corrWithVelocity[i].norm() != 0.0f)
-		{
-			m_PBFCData.m_corrWithVelocity[i] = m_PBFCData.m_corrWithVelocity[i] / m_PBFCData.m_weightForVelocityC[i];
-			m_PBFCData.m_corrWithVelocity[i] = intensityOfVelosityC * p_subWorld->GetTimeStep()
-				* (m_PBFCData.m_corrWithVelocity[i] - fineP[i]->m_velocity);
-		}
-		
-		fineP[i]->m_curPosition += m_PBFCData.m_corrWithVelocity[i] + m_PBFCData.m_corrWithDensity[i];
 	}
 
 }

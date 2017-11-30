@@ -31,8 +31,8 @@ private:
 
 	FluidKernel k;
 
-	unsigned int  m_numOfParticles;
-	unsigned int  m_numOfBoundaryParticles;
+	int  m_numOfParticles;
+	int  m_numOfBoundaryParticles;
 
 	float m_particleRadius;
 	float m_smoothingLength;
