@@ -312,7 +312,7 @@ void FluidWorld::StepPBF()
 
 	pbfWorld->ComputeXSPHViscosity(m_particles);
 
-	UpdateTimeStepSizeCFL();
+	//UpdateTimeStepSizeCFL();
 
 	m_accTimeIntegration += h;
 }
@@ -352,7 +352,7 @@ void FluidWorld::StepPBFonFine()
 
 	m_accTimeIntegration += h;
 }
-void FluidWorld::StepPBFonFine1()
+void FluidWorld::StepPBFonSub1()
 {
 	float h = m_timeStep;
 
@@ -374,7 +374,7 @@ void FluidWorld::StepPBFonFine1()
 	}
 	NeighborListUpdate();
 }
-void FluidWorld::StepPBFonFine2()
+void FluidWorld::StepPBFonSub2()
 {
 	float h = m_timeStep;
 
@@ -391,12 +391,12 @@ void FluidWorld::StepPBFonFine2()
 
 	pbfWorld->ComputeXSPHViscosity(m_particles);
 
-	UpdateTimeStepSizeCFL();
+	//UpdateTimeStepSizeCFL();
 
 	m_accTimeIntegration += h;
 }
 
-void FluidWorld::StepPBFonFine1WithTF()
+void FluidWorld::StepPBFonSub1WithTF()
 {
 	float h = m_timeStep;
 
@@ -416,9 +416,9 @@ void FluidWorld::StepPBFonFine1WithTF()
 		}
 	}
 
-	UpdateTimeStepSizeCFL();
+	//UpdateTimeStepSizeCFL();
 }
-void FluidWorld::StepPBFonFine2WithTF()
+void FluidWorld::StepPBFonSub2WithTF()
 {
 	float h = m_timeStep;
 #pragma omp parallel default(shared)

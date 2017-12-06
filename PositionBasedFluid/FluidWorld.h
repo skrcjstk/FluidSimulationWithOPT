@@ -55,8 +55,7 @@ public:
 
 	int  GetFluidMethodNumber();
 	void* GetFluidMethod();
-
-
+	
 	void Reset();
 	void CreateParticles(std::vector<Vector3f>& p_damParticles, std::vector<Vector3f>& p_containerParticles, float p_particleRadius);
 	void AddFParticle(Vector3f p_position, Vector3f p_velocity);
@@ -65,10 +64,10 @@ public:
 
 	void StepPBF();
 	void StepPBFonFine();
-	void StepPBFonFine1();
-	void StepPBFonFine2();
-	void StepPBFonFine1WithTF();
-	void StepPBFonFine2WithTF();
+	void StepPBFonSub1();
+	void StepPBFonSub2();
+	void StepPBFonSub1WithTF();
+	void StepPBFonSub2WithTF();
 	
 	void StepIISPH();
 	void StepIISPHonCoarse1();
