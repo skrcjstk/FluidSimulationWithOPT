@@ -20,10 +20,9 @@ using namespace std;
 
 //string TDPath = "./PBFC_Scene1_SD1/SD";
 string TDPath = "./PBFC_SD9_Model1/SD";
-int saveFrameLimit = 800;
+int saveFrameLimit = 1600;
 string coarseEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_coarse.dat";
 string fineEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_fine.dat";
-
 
 void timeStep();
 void reset();
@@ -58,7 +57,7 @@ int coarseDamWidth = fineDamWidth / 2;
 int coarseDamHeight = fineDamHeight / 2;
 int coarseDamDepth = fineDamDepth / 2;
 float containerWidth = (coarseDamWidth + 1) * coarseR * 2.0f * 5.0f;
-float containerHeight = 1.5f;
+float containerHeight = 3.0f;
 float containerDepth = (coarseDamDepth + 1) * coarseR * 2.0f;
 
 Vector3f containerStart;
@@ -119,23 +118,34 @@ void timeStep()
 			// PBFC simulation
 			//float deltaT = subWorld->GetTimeStep();
 			//world->SetTimeStep(deltaT);
-			world->StepPBF(); 
+			world->StepPBF();
 
 			// fine advection and neighbor update
 			subWorld->StepPBFonSub1();
 			
 			// neighbor update between fine and coarse
 			pbfc.NeighborBTWTwoResForPBFC(world, subWorld);
-			pbfc.UpdateTrainingData(world, subWorld);
+			
+			pbfc.UpdateTrainingDataForMain(world, subWorld);
+			int acc = 0;
+			for (int j = 0; j < subWorld->GetNumOfParticles(); j++)
+			{
+				acc += pbfc.m_tDataForMain[j].size();
+				printf("%d's coarse neighbor : %d \n", j, pbfc.m_tDataForMain[j].size());
+			}
+			printf("avg coarse neighbor : %f \n", (float)acc / (float)subWorld->GetNumOfParticles());
+			pbfc.UpdateTrainingDataForSub(subWorld);  // for SD9M1
 
 			// update lambda for coarse & solve density and velocity constraints
 			pbfc.SolvePBFCConstaints(world, subWorld);
+
+			//pbfc.UpdateTrainingDataForSub(subWorld);  // for SD9M2
 
 			// fine density relaxing and update
 			subWorld->StepPBFonSub2();
 
 			// Data save
-			DataSave();
+			//DataSave();
 		}
 	}
 	if (accFrameCount > saveFrameLimit)
@@ -247,7 +257,7 @@ void buildModel_BreakingDam()
 	CreateCoarseContainer(boundaryParticles);
 			
 	world = new FluidWorld();
-	world->SetTimeStep(0.01f);
+	world->SetTimeStep(0.005f);
 	world->CreateParticles(damParticles, boundaryParticles, coarseR);
 
 	// sub domain creation
@@ -257,7 +267,7 @@ void buildModel_BreakingDam()
 	CreateFineContainer(subBoundaryParticles);
 	
 	subWorld = new FluidWorld();
-	subWorld->SetTimeStep(0.01f);
+	subWorld->SetTimeStep(0.005f);
 	subWorld->CreateParticles(subDamParticles, subBoundaryParticles, fineR);
 
 	// FlowBoundary Setting and create fine ps
@@ -474,7 +484,6 @@ void LoadContainerAndFluidDam(string path, std::vector<Vector3f>& p_boundaryPart
 	
 	fclose(fpEnv);
 }
-
 void DataSave()
 {
 	std::vector<FParticle*>& fineP = subWorld->GetParticleList();
@@ -493,7 +502,8 @@ void DataSave()
 	for (int i = 0; i < fineP.size(); i++)
 	{
 		// fine's GT deltaP
-		Vector3f deltaP = fineP[i]->m_curPosition - fineP[i]->m_tempPosition;
+		Vector3f deltaP = fineP[i]->m_curPosition - fineP[i]->m_tempPosition; // for SD9M1
+		//Vector3f deltaP = fineP[i]->m_curPosition - (fineP[i]->m_tempPosition + pbfc.m_deltaPWithControl[i]); // for SD9M2
 		fbuf[0] = deltaP[0]; fbuf[1] = deltaP[1]; fbuf[2] = deltaP[2];
 		fwrite(fbuf, sizeof(float), 3, fp);
 		

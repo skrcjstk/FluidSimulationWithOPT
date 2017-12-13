@@ -372,6 +372,7 @@ void FluidWorld::StepPBFonSub1()
 			}
 		}
 	}
+
 	NeighborListUpdate();
 }
 void FluidWorld::StepPBFonSub2()
@@ -415,9 +416,9 @@ void FluidWorld::StepPBFonSub1WithTF()
 			}
 		}
 	}
-
-	//UpdateTimeStepSizeCFL();
+	NeighborListUpdate();
 }
+
 void FluidWorld::StepPBFonSub2WithTF()
 {
 	float h = m_timeStep;
@@ -427,6 +428,7 @@ void FluidWorld::StepPBFonSub2WithTF()
 		for (int i = 0; i < m_numOfParticles; i++)
 			m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
 	}
+	//UpdateTimeStepSizeCFL();
 }
 
 

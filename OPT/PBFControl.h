@@ -36,13 +36,19 @@ public:
 	
 	// for PBFC
 	PBFControlData m_PBFCData;
+
 	std::vector<std::vector<int>> m_neighListwithSubP;
 	std::vector<std::vector<int>> m_neighListwithSubBoundaryP;
 
 	void Initialize(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	void SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
-	void UpdateTrainingData(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void UpdateTrainingDataForMain(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
+	void UpdateTrainingDataForSub(FluidWorld* p_subWorld);
+	
+	float m_intensityOfDensityC = 1.0f;
+	float m_intensityOfVelocityC = 0.0f;
+
 };
 
 #endif

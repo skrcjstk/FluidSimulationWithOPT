@@ -55,7 +55,7 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 #pragma omp parallel default(shared)
 		{
 #pragma omp for schedule(static)
-			for (unsigned int i = 0; i < numParticles; i++)
+			for (int i = 0; i < numParticles; i++)
 			{
 				// computePBFDensity
 				p_particles[i]->m_density = p_particles[i]->m_mass * m_kernel.Cubic_Kernel0();
@@ -121,7 +121,7 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 
 #pragma omp for schedule(static)
 			// Compute position correction
-			for (unsigned int i = 0; i < numParticles; i++)
+			for (int i = 0; i < numParticles; i++)
 			{
 				Vector3f corr(0.0f, 0.0f, 0.0f);
 
@@ -147,7 +147,7 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 			}
 
 #pragma omp for schedule(static)
-			for (unsigned int i = 0; i < numParticles; i++)
+			for (int i = 0; i < numParticles; i++)
 			{
 				p_particles[i]->m_curPosition += m_deltaX[i];
 			}
@@ -165,7 +165,7 @@ void PBFWorld::ComputeXSPHViscosity(std::vector<FParticle*>& p_particles)
 #pragma omp parallel default(shared)
 	{
 #pragma omp for schedule(static)  
-		for (unsigned int i = 0; i < numParticles; i++)
+		for (int i = 0; i < numParticles; i++)
 		{
 			for (unsigned int j = 0; j < p_particles[i]->m_neighborList.size(); j++)
 			{
