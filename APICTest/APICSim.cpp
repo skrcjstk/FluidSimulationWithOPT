@@ -75,7 +75,7 @@ void APICSim::Map_P2G(FluidWorld* p_world)
 				for (FParticle* p : neighbors)
 				{
 					float weight = 4.0 / 3.0 * M_PI * rho * radii * radii * radii * linear_kernel(p->m_curPosition - pos, dx);
-					sum_u += weight * (p->m_velocity[0] + p->m_c.col(0).dot(pos - p->m_curPosition));
+					sum_u += weight * p->m_velocity[0]; // +p->m_c.col(0).dot(pos - p->m_curPosition);
 					sum_weight += weight;
 				}
 
@@ -99,7 +99,7 @@ void APICSim::Map_P2G(FluidWorld* p_world)
 				for (FParticle* p : neighbors)
 				{
 					float weight = 4.0 / 3.0 * M_PI * rho * radii * radii * radii * linear_kernel(p->m_curPosition - pos, dx);
-					sum_u += weight * (p->m_velocity[1] + p->m_c.col(1).dot(pos - p->m_curPosition));
+					sum_u += weight * p->m_velocity[1]; //+ p->m_c.col(1).dot(pos - p->m_curPosition);
 					sum_weight += weight;
 				}
 
@@ -123,7 +123,7 @@ void APICSim::Map_P2G(FluidWorld* p_world)
 				for (FParticle* p : neighbors)
 				{
 					float weight = 4.0 / 3.0 * M_PI * rho * radii * radii * radii * linear_kernel(p->m_curPosition - pos, dx);
-					sum_u += weight * (p->m_velocity[2] + p->m_c.col(2).dot(pos - p->m_curPosition));
+					sum_u += weight * p->m_velocity[2]; // +p->m_c.col(2).dot(pos - p->m_curPosition);
 					sum_weight += weight;
 				}
 
@@ -197,12 +197,14 @@ inline Vector3f APICSim::affine_interpolate_value(Vector3f& point, APICArray3d::
 {
 	int i, j, k;
 	float fx, fy, fz;
+	Vector3f result;
 
 	get_barycentric(point[0], i, fx, 0, grid.width);
 	get_barycentric(point[1], j, fy, 0, grid.height);
 	get_barycentric(point[2], k, fz, 0, grid.depth);
 
-	return grad_trilerp(grid.get(i, j, k), grid.get(i + 1, j, k), grid.get(i, j + 1, k), grid.get(i + 1, j + 1, k),
-		grid.get(i, j, k + 1), grid.get(i + 1, j, k + 1), grid.get(i, j + 1, k + 1), grid.get(i + 1, j + 1, k + 1),
-		fx, fy, fz);
+	result = grad_trilerp(grid.get(i, j, k), grid.get(i + 1, j, k), grid.get(i, j + 1, k), grid.get(i + 1, j + 1, k),	grid.get(i, j, k + 1), grid.get(i + 1, j, k + 1), grid.get(i, j + 1, k + 1), grid.get(i + 1, j + 1, k + 1),	fx, fy, fz);
+
+	return result;
+		
 }

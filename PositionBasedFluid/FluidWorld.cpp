@@ -57,6 +57,7 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 
 			m_particles[i]->m_velocity.setZero();
 			m_particles[i]->m_acceleration.setZero();
+			m_particles[i]->m_c.setZero();
 		}
 
 		// copy boundary particles

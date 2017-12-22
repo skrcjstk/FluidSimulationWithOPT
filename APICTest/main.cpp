@@ -95,7 +95,7 @@ void timeStep()
 
 	timer1.start();
 	sim.AssignCells(world);
-	sim.UpdateAffineMatrix(world);
+	//sim.UpdateAffineMatrix(world);
 	sim.Map_P2G(world);
 	timer1.end("Assign & Mapping");
 	
