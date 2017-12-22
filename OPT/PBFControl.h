@@ -10,9 +10,11 @@ using namespace Eigen;
 class TrainData
 {
 public:
-	float weight;
+	float mass;
+	float kWeight;
 	Vector3f RVec;
-	Vector3f RVel;
+	Vector3f kGrad;
+	Vector3f dPos;
 };
 class PBFControlData
 {
@@ -25,7 +27,7 @@ public:
 class PBFControl
 {
 public:
-	FluidKernel k;
+	FluidKernel constKernel;
 
 	// for TrainingData
 	std::vector<std::vector<TrainData>> m_tDataForMain;
@@ -33,7 +35,6 @@ public:
 	std::vector<std::vector<TrainData>> m_tDataForSub;
 	std::vector<Vector3f> m_deltaPWithControl;
 
-	
 	// for PBFC
 	PBFControlData m_PBFCData;
 
@@ -47,7 +48,7 @@ public:
 	void UpdateTrainingDataForSub(FluidWorld* p_subWorld);
 	
 	float m_intensityOfDensityC = 1.0f;
-	float m_intensityOfVelocityC = 0.0f;
+	float m_intensityOfVelocityC = 0.01f;
 
 };
 

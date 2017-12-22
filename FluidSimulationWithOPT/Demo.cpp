@@ -18,8 +18,8 @@ using namespace PBD;
 using namespace Eigen;
 using namespace std;
 
-//string TDPath = "./PBFC_Scene1_SD1/SD";
-string TDPath = "./PBFC_SD9_Model1/SD";
+string positionDataPath = "./PBFCDataScene/";
+string TDPath = "./PBFC_SD10_RN/SD";
 int saveFrameLimit = 1600;
 string coarseEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_coarse.dat";
 string fineEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_fine.dat";
@@ -38,6 +38,7 @@ void CreateCoarseContainer(std::vector<Vector3f>& p_boundaryParticles);
 void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryParticle, float p_particleRadius);
 void CreateFineContainer(std::vector<Vector3f>& p_boundaryParticles);
 void DataSave();
+void PositionDataSave();
 
 Primitive spherePrimiCoarse, spherePrimiFine, boxPrimi;
 TimerChrono timer;
@@ -127,13 +128,7 @@ void timeStep()
 			pbfc.NeighborBTWTwoResForPBFC(world, subWorld);
 			
 			pbfc.UpdateTrainingDataForMain(world, subWorld);
-			int acc = 0;
-			for (int j = 0; j < subWorld->GetNumOfParticles(); j++)
-			{
-				acc += pbfc.m_tDataForMain[j].size();
-				printf("%d's coarse neighbor : %d \n", j, pbfc.m_tDataForMain[j].size());
-			}
-			printf("avg coarse neighbor : %f \n", (float)acc / (float)subWorld->GetNumOfParticles());
+			
 			pbfc.UpdateTrainingDataForSub(subWorld);  // for SD9M1
 
 			// update lambda for coarse & solve density and velocity constraints
@@ -145,13 +140,14 @@ void timeStep()
 			subWorld->StepPBFonSub2();
 
 			// Data save
-			//DataSave();
+			DataSave();
 		}
 	}
 	if (accFrameCount > saveFrameLimit)
 	{
 		doPause = !doPause;
 	}
+	//PositionDataSave();
 	accFrameCount++;
 }
 
@@ -506,88 +502,114 @@ void DataSave()
 		//Vector3f deltaP = fineP[i]->m_curPosition - (fineP[i]->m_tempPosition + pbfc.m_deltaPWithControl[i]); // for SD9M2
 		fbuf[0] = deltaP[0]; fbuf[1] = deltaP[1]; fbuf[2] = deltaP[2];
 		fwrite(fbuf, sizeof(float), 3, fp);
-		
-		// fine's temp deltaP
-		deltaP = fineP[i]->m_tempPosition - fineP[i]->m_oldPosition;
-		fbuf[0] = deltaP[0]; fbuf[1] = deltaP[1]; fbuf[2] = deltaP[2];
+
+		Vector3f tempDeltaP = fineP[i]->m_tempPosition - fineP[i]->m_oldPosition;
+		fbuf[0] = tempDeltaP[0]; fbuf[1] = tempDeltaP[1]; fbuf[2] = tempDeltaP[2];
 		fwrite(fbuf, sizeof(float), 3, fp);
 		
 		// fine's deltaPWithControl
-		fbuf[0] = pbfc.m_deltaPWithControl[i][0];
-		fbuf[1] = pbfc.m_deltaPWithControl[i][1];
-		fbuf[2] = pbfc.m_deltaPWithControl[i][2];
-		fwrite(fbuf, sizeof(float), 3, fp);
+		//fbuf[0] = pbfc.m_deltaPWithControl[i][0];
+		//fbuf[1] = pbfc.m_deltaPWithControl[i][1];
+		//fbuf[2] = pbfc.m_deltaPWithControl[i][2];
+		//fwrite(fbuf, sizeof(float), 3, fp);
 
 		// fine's numOfNeighbors of coarse fluid particle
 		ibuf[0] = pbfc.m_tDataForMain[i].size();
 		fwrite(ibuf, sizeof(int), 1, fp);
 		for (int j = 0; j < ibuf[0]; j++)
 		{
+			float& mass = pbfc.m_tDataForMain[i][j].mass;
+			float& kWeight = pbfc.m_tDataForMain[i][j].kWeight;
 			Vector3f& RVec = pbfc.m_tDataForMain[i][j].RVec;
-			Vector3f& RVel = pbfc.m_tDataForMain[i][j].RVel;
-			float& weight = pbfc.m_tDataForMain[i][j].weight;
-
-			// weight
-			fbuf[0] = weight;
+			Vector3f& kGrad = pbfc.m_tDataForMain[i][j].kGrad;
+			Vector3f& dPos = pbfc.m_tDataForMain[i][j].dPos;
+			// mass
+			fbuf[0] = mass;
 			fwrite(fbuf, sizeof(float), 1, fp);
 
-			// r
+			// kWeight
+			fbuf[0] = kWeight;
+			fwrite(fbuf, sizeof(float), 1, fp);
+
+			// kGrad
+			fbuf[0] = kGrad[0]; fbuf[1] = kGrad[1]; fbuf[2] = kGrad[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+			
+			// RVec
 			fbuf[0] = RVec[0]; fbuf[1] = RVec[1]; fbuf[2] = RVec[2];
 			fwrite(fbuf, sizeof(float), 3, fp);
-
-			// deltaP : coarse's curPos - coarse's oldPos
-			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
+			
+			// dPos
+			fbuf[0] = dPos[0]; fbuf[1] = dPos[1]; fbuf[2] = dPos[2];
 			fwrite(fbuf, sizeof(float), 3, fp);
 		}
 		
-		/*
-		// fine's numOfNeighbors of coarse boundary particle
-		ibuf[0] = pbfc.m_tDataForMainBoundary[i].size();
-		fwrite(ibuf, sizeof(int), 1, fp);
-
-		for (int j = 0; j < ibuf[0]; j++)
-		{
-			Vector3f& RVec = pbfc.m_tDataForMainBoundary[i][j].RVec;
-			Vector3f& RVel = pbfc.m_tDataForMainBoundary[i][j].RVel;
-			float& weight = pbfc.m_tDataForMainBoundary[i][j].weight;
-
-			// weight
-			fbuf[0] = weight;
-			fwrite(fbuf, sizeof(float), 1, fp);
-
-			// r
-			fbuf[0] = RVec[0]; fbuf[1] = RVec[1]; fbuf[2] = RVec[2];
-			fwrite(fbuf, sizeof(float), 3, fp);
-
-			// RVel : coarse's Vel - fine's Vel
-			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
-			fwrite(fbuf, sizeof(float), 3, fp);
-		}
-		*/
-
 		// fine's numOfNeighbors of fine fluid particle
 		ibuf[0] = pbfc.m_tDataForSub[i].size();
 		fwrite(ibuf, sizeof(int), 1, fp);
-
 		for (int j = 0; j < ibuf[0]; j++)
 		{
-			Vector3f RVec = pbfc.m_tDataForSub[i][j].RVec;
-			Vector3f RVel = pbfc.m_tDataForSub[i][j].RVel;
-			float weight = pbfc.m_tDataForSub[i][j].weight;
+			float& mass = pbfc.m_tDataForSub[i][j].mass;
+			float& kWeight = pbfc.m_tDataForSub[i][j].kWeight;
+			Vector3f& RVec = pbfc.m_tDataForSub[i][j].RVec;
+			Vector3f& kGrad = pbfc.m_tDataForSub[i][j].kGrad;
+			Vector3f& dPos = pbfc.m_tDataForSub[i][j].dPos;
 
-			// weight
-			fbuf[0] = weight;
+			// mass
+			fbuf[0] = mass;
+			fwrite(fbuf, sizeof(float), 1, fp);
+			
+			// kWeight
+			fbuf[0] = kWeight;
 			fwrite(fbuf, sizeof(float), 1, fp);
 
-			// r
+			// kGrad
+			fbuf[0] = kGrad[0]; fbuf[1] = kGrad[1]; fbuf[2] = kGrad[2];
+			fwrite(fbuf, sizeof(float), 3, fp);
+
+			// RVec
 			fbuf[0] = RVec[0]; fbuf[1] = RVec[1]; fbuf[2] = RVec[2];
 			fwrite(fbuf, sizeof(float), 3, fp);
 
-			// deltaP : fine's tempPos - coarse's oldPos
-			fbuf[0] = RVel[0]; fbuf[1] = RVel[1]; fbuf[2] = RVel[2];
+			// dPos
+			fbuf[0] = dPos[0]; fbuf[1] = dPos[1]; fbuf[2] = dPos[2];
 			fwrite(fbuf, sizeof(float), 3, fp);
 		}
 	}
 
 	fclose(fp);
+}
+
+void PositionDataSave()
+{
+	int ibuf[1];
+	float fbuf[3];
+
+	string filename = positionDataPath + "MainWorld" + std::to_string(accFrameCount) + ".dat";
+	FILE* fp = fopen(filename.c_str(), "wb");
+
+	ibuf[0] = world->GetNumOfParticles();
+	fwrite(ibuf, sizeof(int), 1, fp);
+	for (int i = 0; i < ibuf[0]; i++)
+	{
+		Vector3f& curPos = world->GetParticle(i)->m_curPosition;
+		fbuf[0] = curPos[0];	fbuf[1] = curPos[1];	fbuf[2] = curPos[2];
+		//printf("%d's pos %f, %f, %f\n", i, fbuf[0], fbuf[1], fbuf[2]);
+		fwrite(fbuf, sizeof(float), 3, fp);
+	}
+	fclose(fp);
+
+	filename = positionDataPath + "SubWorld" + std::to_string(accFrameCount) + ".dat";
+	fp = fopen(filename.c_str(), "wb");
+
+	ibuf[0] = subWorld->GetNumOfParticles();
+	fwrite(ibuf, sizeof(int), 1, fp);
+	for (int i = 0; i < ibuf[0]; i++)
+	{
+		Vector3f& curPos = subWorld->GetParticle(i)->m_curPosition;
+		fbuf[0] = curPos[0];	fbuf[1] = curPos[1];	fbuf[2] = curPos[2];
+		fwrite(fbuf, sizeof(float), 3, fp);
+	}
+	fclose(fp);
+	printf("%d frame's positionData were saved.\n", accFrameCount);
 }

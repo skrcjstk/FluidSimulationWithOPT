@@ -3,7 +3,7 @@
 void PBFControl::Initialize(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 {
 	float mainR = p_mainWorld->GetParticleRadius();
-	k.SetSmoothingRadius(4.0f * mainR);
+	constKernel.SetSmoothingRadius(4.0f * mainR);
 
 	m_PBFCData.m_lambdaForCoarse.resize(p_mainWorld->GetNumOfParticles());
 	m_PBFCData.m_corrWithDensity.resize(p_subWorld->GetNumOfParticles());
@@ -25,7 +25,7 @@ void PBFControl::Initialize(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 
 void PBFControl::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 {
-	float searchRange = k.GetSmoothingRadius();
+	float searchRange = constKernel.GetSmoothingRadius();
 	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
 	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
 	std::vector<Vector3f>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
@@ -95,13 +95,13 @@ void PBFControl::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subW
 			{
 				int idx = m_neighListwithSubP[i][j];
 				Vector3f& finePos = fineP[idx]->m_curPosition;
-				density += fineP[idx]->m_mass * k.Cubic_Kernel(coarsePos - finePos);
+				density += fineP[idx]->m_mass * constKernel.Cubic_Kernel(coarsePos - finePos);
 			}
 			for (int j = 0; j < m_neighListwithSubBoundaryP[i].size(); j++)
 			{
 				int idx = m_neighListwithSubBoundaryP[i][j];
 				Vector3f& finePos = boundaryFineP[idx];
-				density += p_subWorld->GetBoundaryPsi(idx) * k.Cubic_Kernel(coarsePos - finePos);
+				density += p_subWorld->GetBoundaryPsi(idx) * constKernel.Cubic_Kernel(coarsePos - finePos);
 			}
 
 			float C = std::max(density / mainRestDensity - 1.0f, 0.0f);
@@ -117,7 +117,7 @@ void PBFControl::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subW
 					int idx = m_neighListwithSubP[i][j];
 					Vector3f& finePos = fineP[idx]->m_curPosition;
 
-					Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
+					Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * constKernel.Cubic_Kernel_Gradient(coarsePos - finePos);
 					sum_grad_C2 += gradC_j.squaredNorm();
 					gradC_i -= gradC_j;
 				}
@@ -127,7 +127,7 @@ void PBFControl::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subW
 					int idx = m_neighListwithSubBoundaryP[i][j];
 					Vector3f& finePos = boundaryFineP[idx];
 
-					Vector3f gradC_j = -p_subWorld->GetBoundaryPsi(idx) / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
+					Vector3f gradC_j = -p_subWorld->GetBoundaryPsi(idx) / mainRestDensity * constKernel.Cubic_Kernel_Gradient(coarsePos - finePos);
 					sum_grad_C2 += gradC_j.squaredNorm();
 					gradC_i -= gradC_j;
 				}
@@ -146,7 +146,7 @@ void PBFControl::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subW
 					int idx = m_neighListwithSubP[i][j];
 					Vector3f& finePos = fineP[idx]->m_curPosition;
 
-					Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * k.Cubic_Kernel_Gradient(coarsePos - finePos);
+					Vector3f gradC_j = -fineP[idx]->m_mass / mainRestDensity * constKernel.Cubic_Kernel_Gradient(coarsePos - finePos);
 					m_PBFCData.m_corrWithDensity[idx] += m_intensityOfDensityC * m_PBFCData.m_lambdaForCoarse[i] * gradC_j;
 				}
 			}
@@ -157,8 +157,8 @@ void PBFControl::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subW
 				int idx = m_neighListwithSubP[i][j];
 				Vector3f& finePos = fineP[idx]->m_curPosition;
 
-				m_PBFCData.m_corrWithVelocity[idx] += coarseP[i]->m_velocity * k.Cubic_Kernel(finePos - coarsePos);
-				m_PBFCData.m_weightForVelocityC[idx] += k.Cubic_Kernel(finePos - coarsePos);
+				m_PBFCData.m_corrWithVelocity[idx] += coarseP[i]->m_velocity * constKernel.Cubic_Kernel(finePos - coarsePos);
+				m_PBFCData.m_weightForVelocityC[idx] += constKernel.Cubic_Kernel(finePos - coarsePos);
 			}
 		}
 
@@ -180,88 +180,95 @@ void PBFControl::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subW
 }
 void PBFControl::UpdateTrainingDataForMain(FluidWorld* p_mainWorld, FluidWorld* p_subWorld)
 {
-	float searchRange = k.GetSmoothingRadius();
+	float searchRange = constKernel.GetSmoothingRadius();
 	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
 	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
-	std::vector<Vector3f>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
 	std::vector<Vector3f>& boundaryCoarseP = p_mainWorld->GetBoundaryParticleList();
 
-//#pragma omp parallel default(shared)
-//	{
-//#pragma omp for schedule(static)  
-		for (int i = 0; i < fineP.size(); i++)
-		{
-			m_tDataForMain[i].clear();
-			m_tDataForMain[i].resize(0);
-			//m_tDataForMainBoundary[i].clear();
-			//m_tDataForMainBoundary[i].resize(0);
-			m_tDataForSub[i].clear();
-			m_tDataForSub[i].resize(0);
-		}
+	for (int i = 0; i < fineP.size(); i++)
+	{
+		m_tDataForMain[i].clear();
+		m_tDataForMain[i].resize(0);
+	}
 
-//#pragma omp for schedule(static)  
-		for (int i = 0; i < coarseP.size(); i++)
+	for (int i = 0; i < coarseP.size(); i++)
+	{
+		Vector3f& coarsePos = coarseP[i]->m_curPosition;
+		for (int j = 0; j < fineP.size(); j++)
 		{
-			Vector3f& coarsePos = coarseP[i]->m_curPosition;
-
-			for (int j = 0; j < fineP.size(); j++)
+			Vector3f& finePos = fineP[j]->m_curPosition;
+			Vector3f r = coarsePos - finePos;
+			if (r.norm() <= searchRange)
 			{
-				Vector3f& finePos = fineP[j]->m_curPosition;
-				Vector3f r = coarsePos - finePos;
-				if (r.norm() <= searchRange)
-				{
-					// tDataForMain
-					TrainData a;
-					a.weight = k.Cubic_Kernel(r);
-					a.RVec = r;
-					a.RVel = coarseP[i]->m_curPosition - coarseP[i]->m_oldPosition;
-					m_tDataForMain[j].push_back(a);
-				}
+				TrainData a;
+				a.mass = coarseP[i]->m_mass;
+				a.kWeight = constKernel.Cubic_Kernel(r);
+				a.RVec = r;
+				a.kGrad = constKernel.Cubic_Kernel_Gradient(r);
+				a.dPos = coarseP[i]->m_curPosition - coarseP[i]->m_oldPosition;
+				m_tDataForMain[j].push_back(a);
 			}
 		}
+	}
 
-//#pragma omp for schedule(static)  
-		for (int i = 0; i < fineP.size(); i++)
+	for (int i = 0; i < boundaryCoarseP.size(); i++)
+	{
+		float psi = p_mainWorld->GetBoundaryPsi(i);
+		for (int j = 0; j < fineP.size(); j++)
 		{
-			Vector3f& finePos = fineP[i]->m_curPosition;
-			// tDataForMainBoundary
-			for (int j = 0; j < boundaryCoarseP.size(); j++)
+			Vector3f& finePos = fineP[j]->m_curPosition;
+			Vector3f r = boundaryCoarseP[i] - finePos;
+			if (r.norm() <= searchRange)
 			{
-				Vector3f r = boundaryCoarseP[j] - finePos;
-				if (r.norm() <= searchRange)
-				{
-					TrainData a;
-					a.weight = k.Cubic_Kernel(r);
-					a.RVec = r;
-					a.RVel = Vector3f(0.0f, 0.0f, 0.0f);
-					m_tDataForMain[i].push_back(a);
-				}
+				TrainData a;
+				a.mass = psi;
+				a.kWeight = constKernel.Cubic_Kernel(r);
+				a.RVec = r;
+				a.kGrad = constKernel.Cubic_Kernel_Gradient(r);
+				a.dPos.setZero();
+				m_tDataForMain[j].push_back(a);
 			}
-			
 		}
-//	}
+	}
 }
 
 void PBFControl::UpdateTrainingDataForSub(FluidWorld* p_subWorld)
 {
 	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
+	std::vector<Vector3f>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
+	FluidKernel& subKernel = p_subWorld->GetKernel();
 
 	for (int i = 0; i < fineP.size(); i++)
 	{
-		Vector3f& finePos = fineP[i]->m_curPosition;
-		
+		m_tDataForSub[i].clear();
+		m_tDataForSub[i].resize(0);
 
-		// tDataForSub
+		Vector3f& finePos = fineP[i]->m_curPosition;
+
 		for (int j = 0; j < fineP[i]->m_neighborList.size(); j++)
 		{
 			TrainData a;
 			unsigned int idx = fineP[i]->m_neighborList[j];
-			Vector3f r = fineP[idx]->m_curPosition - finePos;
-			a.weight = p_subWorld->GetKernel().Cubic_Kernel(r);
+			Vector3f r = finePos - fineP[idx]->m_curPosition;
+			a.mass = fineP[idx]->m_mass;
+			a.kWeight = subKernel.Cubic_Kernel(r);
 			a.RVec = r;
-			a.RVel = fineP[idx]->m_curPosition - fineP[idx]->m_oldPosition;
+			a.kGrad = subKernel.Cubic_Kernel_Gradient(r);
+			a.dPos = fineP[idx]->m_curPosition - fineP[idx]->m_oldPosition;
 			m_tDataForSub[i].push_back(a);
 		}
+		/*
+		for (int j = 0; j < fineP[i]->m_neighborBoundaryList.size(); j++)
+		{
+			TrainData a;
+			unsigned int idx = fineP[i]->m_neighborBoundaryList[j];
+			Vector3f r = finePos - boundaryFineP[idx];
+			a.mass = p_subWorld->GetBoundaryPsi(idx);
+			//a.kWeight = subKernel.Cubic_Kernel(r);
+			a.RVec = r;
+			//a.kGrad = subKernel.Cubic_Kernel_Gradient(r);
+			m_tDataForSub[i].push_back(a);
+		}
+		*/
 	}
-
 }

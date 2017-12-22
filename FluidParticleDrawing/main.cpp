@@ -11,8 +11,9 @@ using namespace PBD;
 using namespace std;
 using namespace Eigen;
 
-string positionDataPath = "E:/Tensorflow/tensorflow/tensorflow/contrib/cmake/build/modelLoader/PBFCTrainSD9M3_171213/";
-int frameLimit = 700;
+//string positionDataPath = "E:/Tensorflow/tensorflow/tensorflow/contrib/cmake/build/modelLoader/PBFCTrainSD9M3_171215/";
+string positionDataPath = "../FluidSimulationWithOPT/PBFCDataScene/v0.01/";
+int frameLimit = 1600;
 
 GLint context_major_version, context_minor_version;
 Primitive spherePrimiCoarse, spherePrimiFine, boxPrimi;
@@ -74,7 +75,7 @@ void timeStep()
 	}
 }
 
-void reset() {}
+void reset() { accFrameCount = 0; }
 
 void selection(const Eigen::Vector2i &start, const Eigen::Vector2i &end) {}
 void render()

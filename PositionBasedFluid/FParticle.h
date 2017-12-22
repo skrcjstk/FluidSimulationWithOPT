@@ -27,6 +27,8 @@ public:
 	Vector3f m_tempVelocity;
 
 	bool m_interpolated = false;
+
+	Matrix3f m_c;
 };
 
 #endif

@@ -1,15 +1,9 @@
 #include "PrimitiveBuffer.h"
 
-void Primitive::createSphereBuffers(float radius, int resolution)
+void Primitive::createSphereBuffers(float& radius, int resolution)
 {
 	float PI = static_cast<float>(M_PI);
-	// vectors to hold our data
-	// vertice positions
-	std::vector<Eigen::Vector3f> v;
-	// normals
-	std::vector<Eigen::Vector3f> n;
-	std::vector<unsigned short> indices;
-
+	
 	// initiate the variable we are going to use
 	float X1, Y1, X2, Y2, Z1, Z2;
 	float inc1, inc2, inc3, inc4, radius1, radius2;
@@ -89,7 +83,7 @@ void Primitive::createSphereBuffers(float radius, int resolution)
 	n.clear();
 	v.clear();
 }
-void Primitive::renderSphere(const Eigen::Vector3f &x, const float color[], const float transform[])
+void Primitive::renderSphere(Vector3f &x, float color[], float transform[])
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_NORMAL_ARRAY);
@@ -119,12 +113,6 @@ void Primitive::renderSphere(const Eigen::Vector3f &x, const float color[], cons
 }
 void Primitive::createBoxBuffers()
 {
-	// vertice positions
-	std::vector<Vector3f> v;
-	// normals
-	std::vector<Vector3f> n;
-	std::vector<unsigned short> indices;
-
 	// initiate the variable we are going to use
 	float X1, Y1, X2, Y2, Z1, Z2;
 	float inc1, inc2, inc3, inc4, radius1, radius2;
@@ -139,9 +127,6 @@ void Primitive::createBoxBuffers()
 	v.push_back(Vector3f(1.0, -1.0, -1.0));
 	v.push_back(Vector3f(-1.0, -1.0, 1.0));
 	v.push_back(Vector3f(1.0, -1.0, 1.0));
-
-	n.push_back(Vector3f(X2, Z1, Y2));
-	n.push_back(Vector3f(X2, Z2, Y2));
 
 	indices.push_back(0);
 	indices.push_back(1);
@@ -220,7 +205,7 @@ void Primitive::createBoxBuffers()
 	n.clear();
 	v.clear();
 }
-void Primitive::renderBox(Vector3f position, Vector3f scale, float color[])
+void Primitive::renderBox(Vector3f& position, Vector3f& scale, float color[])
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_NORMAL_ARRAY);
@@ -247,6 +232,104 @@ void Primitive::renderBox(Vector3f position, Vector3f scale, float color[])
 	glDisableClientState(GL_NORMAL_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
+void Primitive::createWireFrameBoxBuffers()
+{
+	// 0, 1, 2, 3
+	v.push_back(Vector3f(-0.5, 0.5, -0.5));
+	v.push_back(Vector3f(0.5, 0.5, -0.5));
+	v.push_back(Vector3f(-0.5, 0.5, 0.5));
+	v.push_back(Vector3f(0.5, 0.5, 0.5));
+	// 4, 5, 6, 7
+	v.push_back(Vector3f(-0.5, -0.5, -0.5));
+	v.push_back(Vector3f(0.5, -0.5, -0.5));
+	v.push_back(Vector3f(-0.5, -0.5, 0.5));
+	v.push_back(Vector3f(0.5, -0.5, 0.5));
+
+	indices.push_back(0);
+	indices.push_back(1);
+	indices.push_back(0);
+	indices.push_back(2);
+	indices.push_back(1);
+	indices.push_back(3);
+	indices.push_back(2);
+	indices.push_back(3);
+
+	indices.push_back(0);
+	indices.push_back(4);
+	indices.push_back(2);
+	indices.push_back(6);
+	indices.push_back(3);
+	indices.push_back(7);
+	indices.push_back(1);
+	indices.push_back(5);
+
+	indices.push_back(4);
+	indices.push_back(5);
+	indices.push_back(4);
+	indices.push_back(6);
+	indices.push_back(5);
+	indices.push_back(7);
+	indices.push_back(6);
+	indices.push_back(7);
+}
+void Primitive::renderWireFrameBox(Vector3f& position, Vector3f& scale, float color[])
+{
+	float speccolor[4] = { 1,1,1,1 };
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, color);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, speccolor);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0);
+
+	glPushMatrix();
+	glTranslatef(position[0], position[1], position[2]);
+	glScalef(scale[0], scale[1], scale[2]);
+	glBegin(GL_LINES);
+	for (int i = 0; i < indices.size() / 2; i++)
+	{
+			Vector3f& a = v[indices[2 * i + 0]];
+			Vector3f& b = v[indices[2 * i + 1]];
+			glVertex3f(a[0], a[1], a[2]);
+			glVertex3f(b[0], b[1], b[2]);
+	}
+	glEnd();
+	glPopMatrix();
+}
+
+void Primitive::renderArrow3D(Vector3f& start, Vector3f& end, float& arrow_head_len)
+{
+	float color[4] = { 1,0,0,1 };
+	float speccolor[4] = { 1,1,1,1 };
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, color);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, speccolor);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0);
+
+	Vector3f direction = end - start;
+	Vector3f dir_norm = direction;
+
+	//TODO Possibly automatically scale arrowhead length based on vector magnitude
+	if (dir_norm.norm() < 1e-14)
+		return;
+
+	dir_norm.normalize();
+	Vector3f perp(dir_norm[1], -dir_norm[0], 0);
+
+	Vector3f tip_left = end + arrow_head_len / (float)sqrt(2.0)*(-dir_norm + perp);
+	Vector3f tip_right = end + arrow_head_len / (float)sqrt(2.0)*(-dir_norm - perp);
+
+	glBegin(GL_LINES);
+		glVertex3f(start[0], start[1], start[2]);
+		glVertex3f(end[0], end[1], end[2]);
+		
+		glVertex3f(end[0], end[1], end[2]);
+		glVertex3f(tip_left[0], tip_left[1], tip_left[2]);
+		
+		glVertex3f(end[0], end[1], end[2]);
+		glVertex3f(tip_right[0], tip_right[1], tip_right[2]);
+	glEnd();
+
+}
+
 void Primitive::releaseBuffers()
 {
 	if (elementbuffer != 0)
