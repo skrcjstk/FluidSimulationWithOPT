@@ -1,12 +1,5 @@
-.vs/FluidSimulationWithOPT/v14/.suo
-FluidSimulationWithOPT.VC.VC.opendb
-FluidSimulationWithOPT.VC.db
-FluidSimulationWithOPT.sln
 FluidSimulationWithOPT/Debug/FluidSim.12AB5B01.tlog/FluidSimulationWithOPT.lastbuildstate
 FluidSimulationWithOPT/Debug/FluidSimulationWithOPT.log
-FluidSimulationWithOPT/FluidSimulationWithOPT.vcxproj
-FluidSimulationWithOPT/FluidSimulationWithOPT.vcxproj.filters
-FluidSimulationWithOPT/FluidSimulationWithOPT.vcxproj.user
 FluidSimulationWithOPT/x64/Debug/Camera.obj
 FluidSimulationWithOPT/x64/Debug/Demo.obj
 FluidSimulationWithOPT/x64/Debug/FluidSim.12AB5B01.tlog/CL.command.1.tlog
@@ -38,8 +31,6 @@ FluidSimulationWithOPT/x64/Release/MiniGL.obj
 FluidSimulationWithOPT/x64/Release/PrimitiveBuffer.obj
 FluidSimulationWithOPT/x64/Release/Shader.obj
 FluidSimulationWithOPT/x64/Release/vc140.pdb
-OPT/OPT.vcxproj
-OPT/OPT.vcxproj.filters
 OPT/ReadMe.txt
 OPT/x64/Debug/FlowBondary.obj
 OPT/x64/Debug/OPT.idb
@@ -79,8 +70,6 @@ PositionBasedFluid/Debug/PositionBasedFluid.log
 PositionBasedFluid/Debug/PositionBasedFluid.pch
 PositionBasedFluid/Debug/PositionBasedFluid.pdb
 PositionBasedFluid/Debug/stdafx.obj
-PositionBasedFluid/PositionBasedFluid.vcxproj
-PositionBasedFluid/PositionBasedFluid.vcxproj.filters
 PositionBasedFluid/ReadMe.txt
 PositionBasedFluid/Release/FluidWorld.obj
 PositionBasedFluid/Release/Position.686B6BCF.tlog/CL.command.1.tlog
@@ -145,8 +134,6 @@ x64/Release/libs/freeglut.exp
 x64/Release/libs/glew.exp
 OPT/x64/Release/OPT.tlog/Lib.read.1.tlog
 PositionBasedFluid/x64/Release/Position.686B6BCF.tlog/Lib.read.1.tlog
-IISPH/IISPH.vcxproj
-IISPH/IISPH.vcxproj.filters
 IISPH/ReadMe.txt
 PositionBasedFluid/x64/Release/IISPH.obj
 PositionBasedFluid/x64/Release/PBF.obj
@@ -196,3 +183,5 @@ APICTest/x64/Release/APICTest.tlog/link.command.1.tlog
 APICTest/x64/Release/APICTest.tlog/link.read.1.tlog
 APICTest/x64/Release/APICTest.tlog/link.write.1.tlog
 APICTest/x64/Release/Camera.obj
+FluidSimulationWithOPT.VC.VC.opendb
+FluidSimulationWithOPT.VC.db
