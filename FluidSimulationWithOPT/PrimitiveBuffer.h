@@ -21,6 +21,7 @@ public:
 	void renderWireFrameBox(Vector3f& position, Vector3f& scale, float color[]);
 	void releaseBuffers();
 	void renderArrow3D(Vector3f& start, Vector3f& end, float& arrow_head_len);
+	void renderPoint(Vector3f& pos, float color[], float width);
 
 private:
 	GLuint elementbuffer;

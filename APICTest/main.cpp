@@ -14,7 +14,6 @@ using namespace PBD;
 using namespace std;
 using namespace Eigen;
 
-
 void timeStep();
 void reset();
 void render();
@@ -131,11 +130,11 @@ void render()
 	float fluidColor[4] = { 0.0f, 0.7f, 0.7f, 0.2f };
 	for (int i = 0; i <world->GetNumOfParticles(); i++)
 	{
-		spherePrimiCoarse.renderSphere(world->GetParticle(i)->m_curPosition, fluidColor);
+		//spherePrimiCoarse.renderSphere(world->GetParticle(i)->m_curPosition, fluidColor);
 	}
 
 	float boxColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
-	
+	float pointColor[4] = { 0.1f, 0.1f, 0.9f, 1.0f };
 	// draw grid & arrow
 	Vector3f nijk = sim.GetNiNjNk();
 	Vector3f dxyz = sim.GetDxDyDz();
@@ -145,7 +144,11 @@ void render()
 			for (int i = 0; i<nijk[0]; i++)
 			{
 				Vector3f pos = sim.GetGridPos(i, j, k);
-				//boxPrimi.renderWireFrameBox(pos, dxyz, boxColor);
+				
+				float m_value = sim.GetMass(pos);
+				if(m_value != 0)
+					boxPrimi.renderWireFrameBox(pos, dxyz, boxColor);
+				
 				Vector3f end = (pos + 0.1f * sim.GetVelocity(pos));
 				boxPrimi.renderArrow3D(pos, end, head_len);
 			}	
@@ -171,11 +174,15 @@ void buildModel()
 	world->SetTimeStep(0.005f);
 	world->CreateParticles(damParticles, boundaryParticles, coarseR);
 
-	// origin=(0,0), gridWidth=100, grid_res=(100,100), rho=1.0
+	//descriptporOrigin()
 	Vector3f bSize = containerEnd - containerStart;
 	sim.Initialize(containerStart, containerEnd - containerStart, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
+	sim.Initialize_AssignCells(world);
+
+	//sim.Initialize_p2g(world, world->GetSmoothingLength());
 
 
+	//GetAPICDescriptor
 }
 
 void CreateCoarseBreakingDam(std::vector<Vector3f>& p_damParticles)
@@ -229,7 +236,7 @@ void CreateCoarseContainer(std::vector<Vector3f>& p_boundaryParticles)
 	// Floor
 	AddWall(Vector3f(x1, y1, z1), Vector3f(x2, y1, z2), p_boundaryParticles, coarseR);
 	// Top
-	AddWall(Vector3f(x1, y2, z1), Vector3f(x2, y2, z2), p_boundaryParticles, coarseR);
+	//AddWall(Vector3f(x1, y2, z1), Vector3f(x2, y2, z2), p_boundaryParticles, coarseR);
 	// Left
 	AddWall(Vector3f(x1, y1, z1), Vector3f(x1, y2, z2), p_boundaryParticles, coarseR);
 	// Right

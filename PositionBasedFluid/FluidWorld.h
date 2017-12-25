@@ -22,13 +22,10 @@ class FluidWorld
 {
 private:
 	PBFWorld* pbfWorld;
-	IISPHWorld* iisphWorld;
-	WCSPHWorld* wcsphWorld;
 	
 	std::vector<FParticle*> m_particles;
-	std::vector<Vector3f> m_boundaryParticles;
-	std::vector<float> m_boundaryPsi;
-
+	std::vector<FParticle*> m_boundaryParticles;
+	
 	FluidKernel k;
 
 	int  m_numOfParticles;
@@ -88,14 +85,9 @@ public:
 	{
 		return m_particles;
 	}
-	std::vector<Vector3f>& GetBoundaryParticleList()
+	std::vector<FParticle*>& GetBoundaryParticleList()
 	{
 		return m_boundaryParticles;
-	}
-
-	float GetBoundaryPsi(int idx)
-	{
-		return m_boundaryPsi[idx];
 	}
 
 	unsigned int  GetNumOfParticles()
@@ -105,10 +97,6 @@ public:
 	unsigned int GetNumOfBoundaryParticles()
 	{
 		return m_numOfBoundaryParticles;
-	}
-	Vector3f GetBoundaryParticlePosition(int p_index)
-	{
-		return m_boundaryParticles[p_index];
 	}
 
 	float GetSmoothingLength()

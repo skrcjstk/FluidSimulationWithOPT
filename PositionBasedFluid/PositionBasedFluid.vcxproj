@@ -150,16 +150,12 @@
     <ClInclude Include="FluidKernel.h" />
     <ClInclude Include="FluidWorld.h" />
     <ClInclude Include="FParticle.h" />
-    <ClInclude Include="IISPH.h" />
     <ClInclude Include="PBF.h" />
     <ClInclude Include="TimerChrono.h" />
-    <ClInclude Include="WCSPH.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FluidWorld.cpp" />
-    <ClCompile Include="IISPH.cpp" />
     <ClCompile Include="PBF.cpp" />
-    <ClCompile Include="WCSPH.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

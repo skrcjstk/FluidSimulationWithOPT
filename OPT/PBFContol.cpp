@@ -28,8 +28,8 @@ void PBFControl::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld* p
 	float searchRange = constKernel.GetSmoothingRadius();
 	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
 	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
-	std::vector<Vector3f>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
-	std::vector<Vector3f>& boundaryCoarseP = p_mainWorld->GetBoundaryParticleList();
+	std::vector<FParticle*>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
+	std::vector<FParticle*>& boundaryCoarseP = p_mainWorld->GetBoundaryParticleList();
 
 #pragma omp parallel default(shared)
 	{
@@ -54,7 +54,7 @@ void PBFControl::NeighborBTWTwoResForPBFC(FluidWorld* p_mainWorld, FluidWorld* p
 			m_neighListwithSubBoundaryP[i].resize(0);
 			for (int j = 0; j < boundaryFineP.size(); j++)
 			{
-				Vector3f& finePos = boundaryFineP[j];
+				Vector3f& finePos = boundaryFineP[j]->m_curPosition;
 				if ((coarsePos - finePos).norm() <= searchRange)
 					m_neighListwithSubBoundaryP[i].push_back(j);
 			}
@@ -68,7 +68,7 @@ void PBFControl::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subW
 	int numOfFine = p_subWorld->GetNumOfParticles();
 	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
 	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
-	std::vector<Vector3f>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
+	std::vector<FParticle*>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
 
 	float mainRestDensity = p_mainWorld->GetRestDensity();
 
@@ -100,8 +100,8 @@ void PBFControl::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subW
 			for (int j = 0; j < m_neighListwithSubBoundaryP[i].size(); j++)
 			{
 				int idx = m_neighListwithSubBoundaryP[i][j];
-				Vector3f& finePos = boundaryFineP[idx];
-				density += p_subWorld->GetBoundaryPsi(idx) * constKernel.Cubic_Kernel(coarsePos - finePos);
+				Vector3f& finePos = boundaryFineP[idx]->m_curPosition;
+				density += boundaryFineP[idx]->m_mass * constKernel.Cubic_Kernel(coarsePos - finePos);
 			}
 
 			float C = std::max(density / mainRestDensity - 1.0f, 0.0f);
@@ -125,9 +125,9 @@ void PBFControl::SolvePBFCConstaints(FluidWorld* p_mainWorld, FluidWorld* p_subW
 				for (int j = 0; j < m_neighListwithSubBoundaryP[i].size(); j++)
 				{
 					int idx = m_neighListwithSubBoundaryP[i][j];
-					Vector3f& finePos = boundaryFineP[idx];
+					Vector3f& finePos = boundaryFineP[idx]->m_curPosition;
 
-					Vector3f gradC_j = -p_subWorld->GetBoundaryPsi(idx) / mainRestDensity * constKernel.Cubic_Kernel_Gradient(coarsePos - finePos);
+					Vector3f gradC_j = -boundaryFineP[idx]->m_mass / mainRestDensity * constKernel.Cubic_Kernel_Gradient(coarsePos - finePos);
 					sum_grad_C2 += gradC_j.squaredNorm();
 					gradC_i -= gradC_j;
 				}
@@ -183,7 +183,7 @@ void PBFControl::UpdateTrainingDataForMain(FluidWorld* p_mainWorld, FluidWorld* 
 	float searchRange = constKernel.GetSmoothingRadius();
 	std::vector<FParticle*>& coarseP = p_mainWorld->GetParticleList();
 	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
-	std::vector<Vector3f>& boundaryCoarseP = p_mainWorld->GetBoundaryParticleList();
+	std::vector<FParticle*>& boundaryCoarseP = p_mainWorld->GetBoundaryParticleList();
 
 	for (int i = 0; i < fineP.size(); i++)
 	{
@@ -213,11 +213,11 @@ void PBFControl::UpdateTrainingDataForMain(FluidWorld* p_mainWorld, FluidWorld* 
 
 	for (int i = 0; i < boundaryCoarseP.size(); i++)
 	{
-		float psi = p_mainWorld->GetBoundaryPsi(i);
+		float psi = boundaryCoarseP[i]->m_mass;
 		for (int j = 0; j < fineP.size(); j++)
 		{
 			Vector3f& finePos = fineP[j]->m_curPosition;
-			Vector3f r = boundaryCoarseP[i] - finePos;
+			Vector3f r = boundaryCoarseP[i]->m_curPosition - finePos;
 			if (r.norm() <= searchRange)
 			{
 				TrainData a;
@@ -235,7 +235,7 @@ void PBFControl::UpdateTrainingDataForMain(FluidWorld* p_mainWorld, FluidWorld* 
 void PBFControl::UpdateTrainingDataForSub(FluidWorld* p_subWorld)
 {
 	std::vector<FParticle*>& fineP = p_subWorld->GetParticleList();
-	std::vector<Vector3f>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
+	std::vector<FParticle*>& boundaryFineP = p_subWorld->GetBoundaryParticleList();
 	FluidKernel& subKernel = p_subWorld->GetKernel();
 
 	for (int i = 0; i < fineP.size(); i++)

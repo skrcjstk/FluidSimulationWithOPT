@@ -214,7 +214,8 @@ void render()
 	
 	for (int i = 0; i < subWorld->GetNumOfParticles(); i++)
 	{
-		spherePrimiFine.renderSphere(subWorld->GetParticle(i)->m_curPosition + translation, subFluidColor);
+		Vector3f pos = subWorld->GetParticle(i)->m_curPosition + translation;
+		spherePrimiFine.renderSphere(pos, subFluidColor);
 	}
 }
 

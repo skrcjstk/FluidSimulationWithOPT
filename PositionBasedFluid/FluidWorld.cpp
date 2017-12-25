@@ -42,8 +42,7 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 
 	m_particles.resize(m_numOfParticles);
 	m_boundaryParticles.resize(p_containerParticles.size());
-	m_boundaryPsi.resize(p_containerParticles.size());
-
+	
 #pragma omp parallel default(shared)
 	{
 		// dam particles creation
@@ -64,7 +63,14 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 #pragma omp for schedule(static)
 		for (int i = 0; i < m_numOfBoundaryParticles; i++)
 		{
-			m_boundaryParticles[i] = p_containerParticles[i];
+			m_boundaryParticles[i] = new FParticle();
+			m_boundaryParticles[i]->m_mass = 0.8f * m_restDensity * diameter * diameter * diameter;
+			m_boundaryParticles[i]->m_restPosition = p_containerParticles[i];
+			m_boundaryParticles[i]->m_curPosition = p_containerParticles[i];
+
+			m_boundaryParticles[i]->m_velocity.setZero();
+			m_boundaryParticles[i]->m_acceleration.setZero();
+			m_boundaryParticles[i]->m_c.setZero();
 		}
 
 		// boudary particles Psi value 
@@ -74,14 +80,14 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 			float delta = k.Cubic_Kernel0();
 			for (int j = 0; j < m_numOfBoundaryParticles; j++)
 			{
-				Vector3f r = m_boundaryParticles[i] - m_boundaryParticles[j];
+				Vector3f r = m_boundaryParticles[i]->m_restPosition - m_boundaryParticles[j]->m_restPosition;
 				if (i != j && r.norm() <= m_smoothingLength)
 				{
 					delta += k.Cubic_Kernel(r);
 				}
 			}
 			float volume = 1.0f / delta;
-			m_boundaryPsi[i] = m_restDensity * volume;
+			m_boundaryParticles[i]->m_mass = m_restDensity * volume;
 		}
 	}
 
@@ -173,7 +179,7 @@ void FluidWorld::NeighborListUpdate()
 			}
 			for (int j = 0; j < m_numOfBoundaryParticles; j++)
 			{
-				Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[j];
+				Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[j]->m_curPosition;
 				if (r.norm() <= m_smoothingLength)
 					m_particles[i]->m_neighborBoundaryList.push_back(j);
 			}
@@ -203,8 +209,8 @@ void FluidWorld::ComputeDensities()
 			for (int j = 0; j < m_particles[i]->m_neighborBoundaryList.size(); j++)
 			{
 				int idx = m_particles[i]->m_neighborBoundaryList[j];
-				Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[idx];
-				m_particles[i]->m_density += m_boundaryPsi[idx] * k.Cubic_Kernel(r);
+				Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[idx]->m_curPosition;
+				m_particles[i]->m_density += m_boundaryParticles[idx]->m_mass * k.Cubic_Kernel(r);
 			}
 
 		}
@@ -300,7 +306,7 @@ void FluidWorld::StepPBF()
 	}
 
 	NeighborListUpdate();
-	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, h);
 		
 #pragma omp parallel default(shared)
 	{
@@ -336,7 +342,7 @@ void FluidWorld::StepPBFonFine()
 	}
 
 	NeighborListUpdate();
-	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, h);
 
 #pragma omp parallel default(shared)
 	{
@@ -380,7 +386,7 @@ void FluidWorld::StepPBFonSub2()
 {
 	float h = m_timeStep;
 
-	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
+	pbfWorld->ConstraintProjection(m_particles, m_boundaryParticles, h);
 
 #pragma omp parallel default(shared)
 	{
@@ -430,174 +436,4 @@ void FluidWorld::StepPBFonSub2WithTF()
 			m_particles[i]->m_velocity = (m_particles[i]->m_curPosition - m_particles[i]->m_oldPosition) * (1.0f / h);
 	}
 	//UpdateTimeStepSizeCFL();
-}
-
-
-void FluidWorld::StepIISPH()
-{
-	float h = m_timeStep;
-
-	// clear ExternForce
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
-	{
-		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-	}
-
-	NeighborListUpdate();
-	ComputeDensities();
-
-	// Compute viscosity 
-	iisphWorld->ComputeViscosity(m_particles);
-	iisphWorld->ComputeSurfaceTension();
-
-	//UpdateTimeStepSizeCFL();
-
-	// Solve density constraint	
-	iisphWorld->PredictAdvection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
-	iisphWorld->PressureSolve(m_particles, m_boundaryParticles, m_boundaryPsi, h);
-	iisphWorld->Integration(m_particles, m_boundaryParticles, m_boundaryPsi, h);
-}
-void FluidWorld::StepIISPHonCoarse1()
-{
-	float h = m_timeStep;
-
-	// clear ExternForce
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
-	{
-		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-	}
-
-	NeighborListUpdate();
-	ComputeDensities();
-
-	// Compute viscosity 
-	iisphWorld->ComputeViscosity(m_particles);
-	iisphWorld->ComputeSurfaceTension();
-	iisphWorld->VelocityAdvection(m_particles, h);
-}
-void FluidWorld::StepIISPHonCoarse2()
-{
-	float h = m_timeStep;
-
-	// Solve density constraint	
-	iisphWorld->PredictAdvection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
-	iisphWorld->PressureSolve(m_particles, m_boundaryParticles, m_boundaryPsi, h);
-	iisphWorld->Integration(m_particles, m_boundaryParticles, m_boundaryPsi, h);
-}
-void FluidWorld::StepIISPHonFine()
-{
-	float h = m_timeStep;
-
-	// clear ExternForce
-	NeighborListUpdate();
-
-	// Solve density constraint	
-	iisphWorld->PredictAdvection(m_particles, m_boundaryParticles, m_boundaryPsi, h);
-	iisphWorld->PressureSolve(m_particles, m_boundaryParticles, m_boundaryPsi, h);
-	iisphWorld->Integration(m_particles, m_boundaryParticles, m_boundaryPsi, h);
-}
-
-void FluidWorld::StepWCSPH()
-{
-	float h = m_timeStep;
-
-	NeighborListUpdate();
-
-	// Compute accelerations: a(t)
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
-		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-	
-	ComputeDensities();
-	wcsphWorld->ComputeViscosity(m_particles);
-	wcsphWorld->ComputeSurfaceTension();
-
-	wcsphWorld->ComputePressures(m_particles);
-	wcsphWorld->ComputePressureAccels(m_particles, m_boundaryParticles, m_boundaryPsi);
-	
-	//UpdateTimeStepSizeCFL();
-	wcsphWorld->Integration(m_particles, h);
-}
-void FluidWorld::StepWCSPHonCoarse1()
-{
-	NeighborListUpdate();
-
-	// Compute accelerations: a(t)
-	for (unsigned int i = 0; i < m_numOfParticles; i++)
-		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-
-	ComputeDensities();
-	wcsphWorld->ComputeViscosity(m_particles);
-	wcsphWorld->ComputeSurfaceTension();
-
-	wcsphWorld->ComputePressures(m_particles);
-}
-void FluidWorld::StepWCSPHonCoarse2()
-{
-	float h = m_timeStep;
-	wcsphWorld->ComputePressureAccels(m_particles, m_boundaryParticles, m_boundaryPsi);
-	wcsphWorld->Integration(m_particles, h);
-}
-void FluidWorld::StepWCSPHonFine1()
-{
-	NeighborListUpdate();
-
-	// clear values
-	for (int i = 0; i < (int)m_numOfParticles; i++)
-	{
-		m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-		wcsphWorld->m_pressure[i] = 0.0f;
-		wcsphWorld->m_pressureAccel[i].setZero();
-	}
-	ComputeDensities(); 
-	wcsphWorld->ComputeViscosity(m_particles);
-	wcsphWorld->ComputeSurfaceTension();
-}
-void FluidWorld::StepWCSPHonFine2()
-{
-	float h = m_timeStep;
-
-	//wcsphWorld->ComputePressures(m_particles);
-#pragma omp parallel default(shared)
-	{
-#pragma omp for schedule(static)  
-		for (int i = 0; i < (int)m_numOfParticles; i++)
-		{
-			if (m_particles[i]->m_interpolated != true)
-			{
-				float &density = m_particles[i]->m_density;
-				density = max(density, m_restDensity);
-				wcsphWorld->m_pressure[i] = wcsphWorld->m_stiffness * (pow(density / m_restDensity, wcsphWorld->m_exponent) - 1.0);
-			}
-		}
-	}
-
-	wcsphWorld->ComputePressureAccels(m_particles, m_boundaryParticles, m_boundaryPsi);
-	
-	//wcsphWorld->Integration(m_particles, h);
-#pragma omp parallel default(shared)
-	{
-#pragma omp for schedule(static) 
-		for (int i = 0; i < (int)m_numOfParticles; i++)
-		{
-			if (m_particles[i]->m_interpolated == true)
-			{
-				Vector3f &pos = m_particles[i]->m_curPosition;
-				Vector3f &vel = m_particles[i]->m_velocity;
-				Vector3f &accel = wcsphWorld->m_pressureAccel[i];
-				// accel += wcsphWorld->m_pressureAccel[i];
-				vel += accel * h;
-				pos += vel * h;
-			}
-			else
-			{
-				Vector3f &pos = m_particles[i]->m_curPosition;
-				Vector3f &vel = m_particles[i]->m_velocity;
-				Vector3f &accel = m_particles[i]->m_acceleration;
-				accel += wcsphWorld->m_pressureAccel[i];
-				vel += accel * h;
-				pos += vel * h;
-			}
-			
-		}
-	}
 }

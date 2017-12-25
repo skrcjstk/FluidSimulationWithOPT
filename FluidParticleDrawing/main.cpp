@@ -109,7 +109,8 @@ void render()
 
 	for (int i = 0; i < subWorld.size(); i++)
 	{
-		spherePrimiFine.renderSphere(subWorld[i] + translation, subFluidColor);
+		Vector3f pos = subWorld[i] + translation;
+		spherePrimiFine.renderSphere(pos, subFluidColor);
 	}
 }
 void cleanup()

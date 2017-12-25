@@ -16,6 +16,7 @@ class APICSim
 public:
 	APICSim() {};
 	void Initialize(Vector3f p_origin, Vector3f p_bSize, Vector3i p_nCount, float p_rho);
+	void Initialize_AssignCells(FluidWorld* p_world);
 	void AssignCells(FluidWorld* p_world);
 	void GetNeigboringParticles_cell(int i, int j, int k, int wl, int wh, int hl, int hh, int dl, int dh, std::vector<FParticle *>& res);
 	void Map_P2G(FluidWorld* p_world);
@@ -23,25 +24,35 @@ public:
 	Vector3f GetDxDyDz() { return Vector3f(dx, dy, dz); }
 	Vector3f& GetGridPos(int i, int j, int k) { return cells_pos[(k*nj*ni) + j*ni + i]; }
 	Vector3f GetVelocity(Vector3f& pos);
+	float GetMass(Vector3f& pos);
 	void UpdateAffineMatrix(FluidWorld* p_world);
-
+	
+	void Initialize_des(int p_np, float p_sl);
+	void AssignCells_des(FluidWorld* p_world);
+	void GetAPICDescriptor(float result[]);
+	int GetBoundCnt() { return bound_cnt; }
+	
 private:
 
 	float rho;
 	Vector3f origin;
 	int ni, nj, nk;
 	float dx, dy, dz;
+	int bound_cnt;
 
+	APICArray3d::Array3d<float> m;
 	APICArray3d::Array3d<float> u;
 	APICArray3d::Array3d<float> v;
 	APICArray3d::Array3d<float> w;
 	
-	std::vector<std::vector<FParticle*>> cells;
+	std::vector<std::vector<FParticle*>> cellsForF;
+	std::vector<std::vector<FParticle*>> cellsForB;
 	std::vector<Vector3f> cells_pos;
-	
+	std::vector<Vector3i> desIdx;
 
 	inline float interpolate_value(Vector3f& point, APICArray3d::Array3d<float>& grid);
 	inline Vector3f affine_interpolate_value(Vector3f& point, APICArray3d::Array3d<float>& grid);
+
 };
 
 inline float linear_kernel(const Vector3f& d, const float& h)
@@ -82,14 +93,16 @@ inline S bilerp(const S& v00, const S& v10,
 		fy);
 }
 
+
 template<class S, class T>
-inline S trilerp(const S& v00, const S& v01, const S& v02, const S& v03,
-	const S& v10, const S& v11, const S& v12, const S& v13,
+inline S trilerp(const S& v000, const S& v100,
+	const S& v010, const S& v110,
+	const S& v001, const S& v101,
+	const S& v011, const S& v111,
 	T fx, T fy, T fz)
 {
-	return lerp(
-		lerp(lerp(v00, v01, fx), lerp(v02, v03, fx), fy),
-		lerp(lerp(v10, v11, fx), lerp(v12, v13, fx), fy),
+	return lerp(bilerp(v000, v100, v010, v110, fx, fy),
+		bilerp(v001, v101, v011, v111, fx, fy),
 		fz);
 }
 

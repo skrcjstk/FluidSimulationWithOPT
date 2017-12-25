@@ -32,7 +32,7 @@ void PBFWorld::SetSmoothingLength(float p_smoothingLength)
 	m_kernel.SetSmoothingRadius(p_smoothingLength);
 }
 
-void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::vector<Vector3f>& p_boundaryParticles, std::vector<float>& p_boundaryPsi, float p_timeStep)
+void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::vector<FParticle* >& p_boundaryParticles, float p_timeStep)
 {
 	int maxiter = 100;
 	int iter = 0;
@@ -71,8 +71,8 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 				for (unsigned int j = 0; j < p_particles[i]->m_neighborBoundaryList.size(); j++)
 				{
 					unsigned int idx = p_particles[i]->m_neighborBoundaryList[j];
-					Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx];
-					p_particles[i]->m_density += p_boundaryPsi[idx] * m_kernel.Cubic_Kernel(r);
+					Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx]->m_curPosition;
+					p_particles[i]->m_density += p_boundaryParticles[idx]->m_mass * m_kernel.Cubic_Kernel(r);
 				}
 
 				float density_err = std::max(p_particles[i]->m_density, density0) - density0;
@@ -101,9 +101,9 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 					for (unsigned int j = 0; j < p_particles[i]->m_neighborBoundaryList.size(); j++)
 					{
 						unsigned int idx = p_particles[i]->m_neighborBoundaryList[j];
-						Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx];
+						Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx]->m_curPosition;
 
-						Vector3f gradC_j = -p_boundaryPsi[idx] / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
+						Vector3f gradC_j = -p_boundaryParticles[idx]->m_mass / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
 						sum_grad_C2 += gradC_j.squaredNorm();
 						gradC_i -= gradC_j;
 					}
@@ -137,9 +137,9 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 				for (unsigned int j = 0; j < p_particles[i]->m_neighborBoundaryList.size(); j++)
 				{
 					unsigned int idx = p_particles[i]->m_neighborBoundaryList[j];
-					Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx];
+					Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx]->m_curPosition;
 
-					Vector3f gradC_j = -p_boundaryPsi[idx] / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
+					Vector3f gradC_j = -p_boundaryParticles[idx]->m_mass / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
 					corr -= (m_particlesLambda[i]) * gradC_j;
 				}
 

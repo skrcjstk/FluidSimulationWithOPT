@@ -19,18 +19,6 @@
     <Filter Include="헤더 파일\PBF">
       <UniqueIdentifier>{10adb4bf-8b41-4dde-9cb1-6c1a0c08b113}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\IISPH">
-      <UniqueIdentifier>{132ab90d-6f3e-43fb-b28d-e50ddab923a6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="헤더 파일\IISPH">
-      <UniqueIdentifier>{788561be-c582-4c93-8e87-68d8d65fa29b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\WCSPH">
-      <UniqueIdentifier>{ada8048b-0abb-4ef3-9d39-4eb9f28317fa}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="헤더 파일\WCSPH">
-      <UniqueIdentifier>{285c50b6-aab7-40ff-a8d3-6dc4664dcdb2}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -45,14 +33,8 @@
     <ClInclude Include="FParticle.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="IISPH.h">
-      <Filter>헤더 파일\IISPH</Filter>
-    </ClInclude>
     <ClInclude Include="PBF.h">
       <Filter>헤더 파일\PBF</Filter>
-    </ClInclude>
-    <ClInclude Include="WCSPH.h">
-      <Filter>헤더 파일\WCSPH</Filter>
     </ClInclude>
     <ClInclude Include="TimerChrono.h">
       <Filter>헤더 파일</Filter>
@@ -65,14 +47,8 @@
     <ClCompile Include="FluidWorld.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="IISPH.cpp">
-      <Filter>소스 파일\IISPH</Filter>
-    </ClCompile>
     <ClCompile Include="PBF.cpp">
       <Filter>소스 파일\PBF</Filter>
-    </ClCompile>
-    <ClCompile Include="WCSPH.cpp">
-      <Filter>소스 파일\WCSPH</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

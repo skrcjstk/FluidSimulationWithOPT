@@ -330,6 +330,22 @@ void Primitive::renderArrow3D(Vector3f& start, Vector3f& end, float& arrow_head_
 
 }
 
+void Primitive::renderPoint(Vector3f& pos, float color[], float width)
+{
+	float speccolor[4] = { 1,1,1,1 };
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, color);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, speccolor);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0);
+
+	glPushMatrix();
+	//glScalef(width, width, width);
+	glBegin(GL_POINTS);
+	glVertex3f(pos[0], pos[1], pos[2]);
+	glEnd();
+	glPopMatrix();
+}
+
 void Primitive::releaseBuffers()
 {
 	if (elementbuffer != 0)
