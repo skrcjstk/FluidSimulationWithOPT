@@ -103,7 +103,7 @@ void timeStep()
 	timer2.end("PIC Update");
 
 	timer3.start();
-	sim.GetAPICDescriptor(dataForPICDescriptor, desc_width);
+	sim.GetAPICDescriptorAll(dataForPICDescriptor, desc_width);
 	timer3.end("Desc Update");
 	
 	
@@ -191,8 +191,8 @@ void buildModel()
 	world->CreateParticles(damParticles, boundaryParticles, fineR);
 
 	Vector3f bSize = containerEnd - containerStart;
-	sim.Initialize(containerStart, containerEnd - containerStart, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
-	sim.Initialize_AssignCells(world);
+	sim.Initialize(world, containerStart, containerEnd - containerStart, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
+	sim.AssignBoundary(world->GetBoundaryParticleList());
 
 	int blockSize = desc_width * desc_width * desc_width;
 	dataForPICDescriptor = (float*)malloc(sizeof(float) * 4 * blockSize * damParticles.size());

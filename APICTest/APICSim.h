@@ -15,8 +15,8 @@ class APICSim
 {
 public:
 	APICSim() {};
-	void Initialize(Vector3f p_origin, Vector3f p_bSize, Vector3i p_nCount, float p_rho);
-	void Initialize_AssignCells(FluidWorld* p_world);
+	void Initialize(FluidWorld* p_world, Vector3f p_origin, Vector3f p_bSize, Vector3i p_nCount, float p_rho);
+	void AssignBoundary(std::vector<FParticle*>& p_BpList);
 	void AssignCells(FluidWorld* p_world);
 	void GetNeigboringParticles_cell(int i, int j, int k, int wl, int wh, int hl, int hh, int dl, int dh, std::vector<FParticle *>& res);
 	void Map_P2G(FluidWorld* p_world);
@@ -27,7 +27,9 @@ public:
 	float GetMass(Vector3f& pos);
 	void UpdateAffineMatrix(FluidWorld* p_world);
 	
-	void APICSim::GetAPICDescriptor(float result[], int p_bound_cnt);
+	Vector3i& GetAssignResultF(int p_idx) { return AssignResultF[p_idx]; }
+	void GetAPICDescriptorAll(float result[], int p_bound_cnt);
+	void GetAPICDescriptor(Vector3i p_ijk, float result[], int desc_width);
 	
 private:
 	float rho;

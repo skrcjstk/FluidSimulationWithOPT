@@ -1,7 +1,7 @@
 #include "APICSim.h"
 
 
-void APICSim::Initialize(Vector3f p_origin, Vector3f p_bSize, Vector3i p_nCount, float p_rho)
+void APICSim::Initialize(FluidWorld* p_world, Vector3f p_origin, Vector3f p_bSize, Vector3i p_nCount, float p_rho)
 {
 	rho = p_rho;
 	origin = p_origin;
@@ -29,21 +29,19 @@ void APICSim::Initialize(Vector3f p_origin, Vector3f p_bSize, Vector3i p_nCount,
 				cells_pos[(k*nj*ni) + j*ni + i] = Vector3f(i * dx, j * dy, k * dz) + origin;
 			}
 
+	int np = p_world->GetNumOfParticles();
+	AssignResultF.resize(np);
 
 	printf("APIC Grid(%d, %d, %d)\n", ni, nj, nk);
 	printf("APIC dx(%.2f) dy(%.2f) dz(%.2f)\n", dx, dy, dz);
 }
 
-void APICSim::Initialize_AssignCells(FluidWorld* p_world)
+void APICSim::AssignBoundary(std::vector<FParticle*>& p_BpList)
 {
-	int np = p_world->GetNumOfParticles();
-	AssignResultF.resize(np);
-	
-	std::vector<FParticle*>& BpList = p_world->GetBoundaryParticleList();
-	int nBp = BpList.size();
+	int nBp = p_BpList.size();
 	for (int n = 0; n < nBp; n++)
 	{
-		FParticle* p = BpList[n];
+		FParticle* p = p_BpList[n];
 		
 		int pi = (int)((p->m_curPosition[0] - origin[0]) / dx);
 		int pj = (int)((p->m_curPosition[1] - origin[1]) / dy);
@@ -276,7 +274,7 @@ inline Vector3f APICSim::affine_interpolate_value(Vector3f& point, APICArray3d::
 		
 }
 
-void APICSim::GetAPICDescriptor(float result[], int desc_width)
+void APICSim::GetAPICDescriptorAll(float result[], int desc_width)
 {
 	int d = desc_width;
 	int halfCnt = (int)(desc_width / 2);
@@ -307,6 +305,28 @@ void APICSim::GetAPICDescriptor(float result[], int desc_width)
 					}
 		}
 	}
+}
+void APICSim::GetAPICDescriptor(Vector3i p_ijk, float result[], int desc_width)
+{
+	int d = desc_width;
+	int halfCnt = (int)(desc_width / 2);
+	int dataSize = 4 * (d*d*d);
+
+	// m,u,v,w
+	for (int k = -halfCnt; k < halfCnt + 1; k++)
+		for (int j = -halfCnt; j < halfCnt + 1; j++)
+			for (int i = -halfCnt; i < halfCnt + 1; i++)
+			{
+				Vector3f grid = Vector3f(p_ijk[0] + i, p_ijk[1] + j, p_ijk[2] + k);
+				float mass = GetMass(grid);
+				Vector3f vel = GetVelocity(grid);
+				int idx = 4 * ((k + halfCnt) * (d*d) + (j + halfCnt)*(d)+(i + halfCnt));
+				result[idx + 0] = mass;
+				result[idx + 1] = vel[0];
+				result[idx + 2] = vel[1];
+				result[idx + 3] = vel[2];
+			}
+	
 }
 
 void APICSim::UpdateAffineMatrix(FluidWorld* p_world)

@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "..\APICTest\APICSim.h"
+#include <ctime>
 
 //#define ENV_LOAD
 
@@ -21,7 +22,7 @@ using namespace std;
 
 string positionDataPath = "./PBFCDataScene/";
 
-string TDPath = "./PBFC_SD10_RN/SD";
+string TDPath = "./PBFC_SD11_PIC/SD";
 int saveFrameLimit = 1600;
 
 string coarseEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_coarse.dat";
@@ -41,6 +42,7 @@ void CreateCoarseContainer(std::vector<Vector3f>& p_boundaryParticles);
 void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryParticle, float p_particleRadius);
 void CreateFineContainer(std::vector<Vector3f>& p_boundaryParticles);
 void DataSave();
+void PICTrainingDataSave();
 void PositionDataSave();
 
 Primitive spherePrimiCoarse, spherePrimiFine, boxPrimi;
@@ -50,6 +52,9 @@ FluidWorld* world;
 FluidWorld* subWorld;
 PBFControl pbfc;
 APICSim picForCoarse, picForFine;
+float *descForCoarse, *descForFine, *gtForFine;
+int descWidthForC=5, descWidthForF=3;
+int sampleCount = 6000;
 
 float fineR = 0.025f;
 float coarseR = 2 * fineR;
@@ -76,6 +81,8 @@ int accFrameCount = 0;
 
 int main(int argc, char** argv)
 {
+	std::srand(std::time(nullptr));
+
 	// OpenGL	
 	MiniGL::init(argc, argv, 1024, 768, 0, 0, "Fluid demo");
 	MiniGL::initLights();
@@ -128,23 +135,25 @@ void timeStep()
 			// fine advection and neighbor update
 			subWorld->StepPBFonSub1();
 			
+			picForCoarse.AssignCells(world);
+			picForCoarse.Map_P2G(world);
+			picForFine.AssignCells(subWorld);
+			picForFine.Map_P2G(subWorld);
+
 			// neighbor update between fine and coarse
 			pbfc.NeighborBTWTwoResForPBFC(world, subWorld);
-			
-			pbfc.UpdateTrainingDataForMain(world, subWorld);
-			
-			pbfc.UpdateTrainingDataForSub(subWorld);  // for SD9M1
+			//pbfc.UpdateTrainingDataForMain(world, subWorld);
+			//pbfc.UpdateTrainingDataForSub(subWorld);
 
 			// update lambda for coarse & solve density and velocity constraints
 			pbfc.SolvePBFCConstaints(world, subWorld);
-
-			//pbfc.UpdateTrainingDataForSub(subWorld);  // for SD9M2
 
 			// fine density relaxing and update
 			subWorld->StepPBFonSub2();
 
 			// Data save
-			DataSave();
+			PICTrainingDataSave();
+			//DataSave();
 		}
 	}
 	if (accFrameCount > saveFrameLimit)
@@ -273,10 +282,20 @@ void buildModel_BreakingDam()
 
 	// FlowBoundary Setting and create fine ps
 	pbfc.Initialize(world, subWorld);
-
-	//fb.SetParticleRadius(fineR);
-	//fb.InitializeDataStructure(world, subWorld);
 	printf("coarse: %d, fine : %d\n", world->GetNumOfParticles(), subWorld->GetNumOfParticles());
+
+	// PIC for coarse grid
+	Vector3f bSize = containerEnd - containerStart;
+	picForCoarse.Initialize(world, containerStart, bSize, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
+	picForCoarse.AssignBoundary(world->GetBoundaryParticleList());
+
+	// PIC for fine grid
+	picForFine.Initialize(subWorld, containerStart, bSize, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
+
+	descForCoarse = (float*)malloc(sizeof(float) * 4 * descWidthForC * descWidthForC * descWidthForC * sampleCount);
+	descForFine = (float*)malloc(sizeof(float) * 4 * descWidthForF * descWidthForF * descWidthForF * sampleCount);
+	gtForFine = (float*)malloc(sizeof(float) * 3 * sampleCount);
+
 }
 void cleanup()
 {
@@ -286,6 +305,9 @@ void cleanup()
 		spherePrimiFine.releaseBuffers();
 		boxPrimi.releaseBuffers();
 	}
+	free(descForCoarse);
+	free(descForFine);
+	free(gtForFine);
 }
 
 void CreateCoarseBreakingDam(std::vector<Vector3f>& p_damParticles)
@@ -485,6 +507,7 @@ void LoadContainerAndFluidDam(string path, std::vector<Vector3f>& p_boundaryPart
 	
 	fclose(fpEnv);
 }
+
 void DataSave()
 {
 	std::vector<FParticle*>& fineP = subWorld->GetParticleList();
@@ -583,6 +606,52 @@ void DataSave()
 	}
 
 	fclose(fp);
+}
+void PICTrainingDataSave()
+{
+	std::vector<FParticle*>& fineP = subWorld->GetParticleList();
+
+	string picCFile = TDPath + "forC_" + std::to_string(accFrameCount) + ".dat";
+	string picFFile = TDPath + "forF_" + std::to_string(accFrameCount) + ".dat";
+	string gtFile = TDPath + "forGT_" + std::to_string(accFrameCount) + ".dat";
+	FILE* fpForC = fopen(picCFile.c_str(), "wb");
+	FILE* fpForF = fopen(picFFile.c_str(), "wb");
+	FILE* fpForGT = fopen(gtFile.c_str(), "wb");
+
+	float fbuf[3];
+	int ibuf[1];
+	int np = subWorld->GetNumOfParticles();
+
+	int success = 0;
+	int sizeForC = 4 * descWidthForC * descWidthForC * descWidthForC;
+	int sizeForF = 4 * descWidthForF * descWidthForF * descWidthForF;
+
+	while(success<sampleCount)
+	{
+		int rnd_idx = std::rand() % np;
+		Vector3i& aRes = picForFine.GetAssignResultF(rnd_idx);
+		if (aRes[0] != -1 && aRes[1] != -1 && aRes[2] != -1)
+		{
+			picForCoarse.GetAPICDescriptor(aRes, descForCoarse + success*sizeForC, descWidthForC);
+			picForFine.GetAPICDescriptor(aRes, descForFine + success*sizeForF, descWidthForF);
+			Vector3f deltaP = fineP[rnd_idx]->m_curPosition - fineP[rnd_idx]->m_tempPosition;
+			gtForFine[3 * success + 0] = deltaP[0];
+			gtForFine[3 * success + 1] = deltaP[1];
+			gtForFine[3 * success + 2] = deltaP[2];
+
+			success += 1;
+		}
+	}
+
+	fwrite(descForCoarse, sizeof(float), sizeForC * sampleCount, fpForC);
+	fwrite(descForCoarse, sizeof(float), sizeForF * sampleCount, fpForF);
+	fwrite(descForCoarse, sizeof(float), 3 * sampleCount, fpForGT);
+	
+	fclose(fpForC);
+	fclose(fpForF);
+	fclose(fpForGT);
+	
+	printf("(%d)frame sampled and saved(%d)\n", accFrameCount, success);
 }
 
 void PositionDataSave()
