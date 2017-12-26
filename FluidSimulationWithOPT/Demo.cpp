@@ -11,6 +11,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
+#include "..\APICTest\APICSim.h"
 
 //#define ENV_LOAD
 
@@ -19,8 +20,10 @@ using namespace Eigen;
 using namespace std;
 
 string positionDataPath = "./PBFCDataScene/";
+
 string TDPath = "./PBFC_SD10_RN/SD";
 int saveFrameLimit = 1600;
+
 string coarseEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_coarse.dat";
 string fineEnvPath = "./ObstacleScenes/171124/DamBreakModelDragons_fine.dat";
 
@@ -46,6 +49,7 @@ TimerChrono timer;
 FluidWorld* world;
 FluidWorld* subWorld;
 PBFControl pbfc;
+APICSim picForCoarse, picForFine;
 
 float fineR = 0.025f;
 float coarseR = 2 * fineR;

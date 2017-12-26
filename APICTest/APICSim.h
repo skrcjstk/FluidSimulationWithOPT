@@ -27,18 +27,13 @@ public:
 	float GetMass(Vector3f& pos);
 	void UpdateAffineMatrix(FluidWorld* p_world);
 	
-	void Initialize_des(int p_np, float p_sl);
-	void AssignCells_des(FluidWorld* p_world);
-	void GetAPICDescriptor(float result[]);
-	int GetBoundCnt() { return bound_cnt; }
+	void APICSim::GetAPICDescriptor(float result[], int p_bound_cnt);
 	
 private:
-
 	float rho;
 	Vector3f origin;
 	int ni, nj, nk;
 	float dx, dy, dz;
-	int bound_cnt;
 
 	APICArray3d::Array3d<float> m;
 	APICArray3d::Array3d<float> u;
@@ -48,11 +43,10 @@ private:
 	std::vector<std::vector<FParticle*>> cellsForF;
 	std::vector<std::vector<FParticle*>> cellsForB;
 	std::vector<Vector3f> cells_pos;
-	std::vector<Vector3i> desIdx;
+	std::vector<Vector3i> AssignResultF;
 
 	inline float interpolate_value(Vector3f& point, APICArray3d::Array3d<float>& grid);
 	inline Vector3f affine_interpolate_value(Vector3f& point, APICArray3d::Array3d<float>& grid);
-
 };
 
 inline float linear_kernel(const Vector3f& d, const float& h)
