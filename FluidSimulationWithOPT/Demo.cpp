@@ -635,6 +635,7 @@ void PICTrainingDataSave()
 			picForCoarse.GetAPICDescriptor(aRes, descForCoarse + success*sizeForC, descWidthForC);
 			picForFine.GetAPICDescriptor(aRes, descForFine + success*sizeForF, descWidthForF);
 			Vector3f deltaP = fineP[rnd_idx]->m_curPosition - fineP[rnd_idx]->m_tempPosition;
+
 			gtForFine[3 * success + 0] = deltaP[0];
 			gtForFine[3 * success + 1] = deltaP[1];
 			gtForFine[3 * success + 2] = deltaP[2];
@@ -644,8 +645,8 @@ void PICTrainingDataSave()
 	}
 
 	fwrite(descForCoarse, sizeof(float), sizeForC * sampleCount, fpForC);
-	fwrite(descForCoarse, sizeof(float), sizeForF * sampleCount, fpForF);
-	fwrite(descForCoarse, sizeof(float), 3 * sampleCount, fpForGT);
+	fwrite(descForFine, sizeof(float), sizeForF * sampleCount, fpForF);
+	fwrite(gtForFine, sizeof(float), 3 * sampleCount, fpForGT);
 	
 	fclose(fpForC);
 	fclose(fpForF);

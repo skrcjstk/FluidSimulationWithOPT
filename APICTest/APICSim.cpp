@@ -318,9 +318,11 @@ void APICSim::GetAPICDescriptor(Vector3i p_ijk, float result[], int desc_width)
 			for (int i = -halfCnt; i < halfCnt + 1; i++)
 			{
 				Vector3f grid = Vector3f(p_ijk[0] + i, p_ijk[1] + j, p_ijk[2] + k);
-				float mass = GetMass(grid);
-				Vector3f vel = GetVelocity(grid);
+				Vector3f pos = GetGridPos(grid[0], grid[1], grid[2]);
+				float mass = GetMass(pos);
+				Vector3f vel = GetVelocity(pos);
 				int idx = 4 * ((k + halfCnt) * (d*d) + (j + halfCnt)*(d)+(i + halfCnt));
+
 				result[idx + 0] = mass;
 				result[idx + 1] = vel[0];
 				result[idx + 2] = vel[1];
