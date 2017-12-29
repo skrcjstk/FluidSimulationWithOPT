@@ -423,7 +423,7 @@ void FluidWorld::StepPBFonSub1WithTF()
 			}
 		}
 	}
-	NeighborListUpdate();
+	//NeighborListUpdate();
 }
 
 void FluidWorld::StepPBFonSub2WithTF()
