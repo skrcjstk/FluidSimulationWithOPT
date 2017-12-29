@@ -155,6 +155,7 @@
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\MiniGL.cpp" />
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Shader.cpp" />
     <ClCompile Include="APICSim.cpp" />
+    <ClCompile Include="LocalAPICSim.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -166,6 +167,7 @@
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Visualization.h" />
     <ClInclude Include="APICSim.h" />
     <ClInclude Include="Array3d.h" />
+    <ClInclude Include="LocalAPICSim.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
