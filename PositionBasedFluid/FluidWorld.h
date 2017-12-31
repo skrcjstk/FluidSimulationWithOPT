@@ -8,8 +8,6 @@
 #include "FParticle.h"
 #include "FluidKernel.h"
 #include "PBF.h"
-#include "IISPH.h"
-#include "WCSPH.h"
 
 // 0 - PBF
 // 1 - IISPH
@@ -41,41 +39,21 @@ private:
 	void NeighborListUpdate();
 	void UpdateTimeStepSizeCFL();
 
-	bool debugFlag = false;
-	
-
 public:
 	float m_accTimeIntegration;
 
 	FluidWorld();
 	~FluidWorld();
 
-	int  GetFluidMethodNumber();
-	void* GetFluidMethod();
-	
 	void Reset();
 	void CreateParticles(std::vector<Vector3f>& p_damParticles, std::vector<Vector3f>& p_containerParticles, float p_particleRadius);
-	void AddFParticle(Vector3f p_position, Vector3f p_velocity);
-	void DeleteFParticle(int p_id);
-	void DeleteAll();
 
 	void StepPBF();
-	void StepPBFonFine();
+	void StepPBFonSub();
 	void StepPBFonSub1();
 	void StepPBFonSub2();
 	void StepPBFonSub1WithTF();
 	void StepPBFonSub2WithTF();
-	
-	void StepIISPH();
-	void StepIISPHonCoarse1();
-	void StepIISPHonCoarse2();
-	void StepIISPHonFine();
-
-	void StepWCSPH();
-	void StepWCSPHonCoarse1();
-	void StepWCSPHonCoarse2();
-	void StepWCSPHonFine1();
-	void StepWCSPHonFine2();
 	
 	FParticle* GetParticle(int p_index)
 	{

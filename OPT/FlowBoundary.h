@@ -73,13 +73,8 @@ public:
 	void NeighborSearchBTWTwoRes(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
 	
 	void InterpolateVelocity(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
-	void InterpolateIISPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
-	void InterpolateWCSPH(FluidWorld* p_mainWorld, FluidWorld* p_subWorld, bool p_debugFlag);
-
-	//temp
 	void NeighborSearchBTWTwoRes2(FluidWorld* p_mainWorld, FluidWorld* p_subWorld);
-	void InterpolateWCSPH2(FluidWorld* p_mainWorld, FluidWorld* p_subWorld, bool p_debugFlag);
-
+	
 private:
 	void CreateBoundaryWall(Vector3f p_min, Vector3f p_max);
 

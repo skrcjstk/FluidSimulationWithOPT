@@ -8,9 +8,14 @@
 
 using namespace Eigen;
 
+enum Pid { Fluid, Boundary };
+
 class FParticle
 {
 public:
+	Pid   m_pid;
+	int   m_pIdx;
+
 	float m_mass;
 	float m_density;
 	
@@ -20,8 +25,8 @@ public:
 	Vector3f m_velocity;
 	Vector3f m_acceleration;
 		
-	std::vector<unsigned int> m_neighborList;
-	std::vector<unsigned int> m_neighborBoundaryList;
+	std::vector<FParticle *> m_neighborList;
+	//std::vector<FParticle *> m_neighborBoundaryList;
 
 	Vector3f m_tempPosition;
 	Vector3f m_tempVelocity;

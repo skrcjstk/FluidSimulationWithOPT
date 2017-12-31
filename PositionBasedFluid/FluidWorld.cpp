@@ -8,14 +8,7 @@ FluidWorld::FluidWorld()
 	m_useGravity = false;
 	m_restDensity = 1000.0f;
 	
-#if FLUID_METHOD == 0
 	pbfWorld = new PBFWorld(m_restDensity, 0.02f, 0.2f, 0.2f);
-#elif FLUID_METHOD == 1
-	iisphWorld = new IISPHWorld(m_restDensity, 0.02f, 0.2f, 0.2f, 0.01f, 100);
-#elif FLUID_METHOD == 2
-	wcsphWorld = new WCSPHWorld(m_restDensity, 0.02f, 0.2f, 0.2f, 0.01f, 100);
-#endif
-
 }
 FluidWorld::~FluidWorld() {}
 
@@ -27,16 +20,8 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 	m_smoothingLength = 4.0f * m_particleRadius;
 	k.SetSmoothingRadius(m_smoothingLength);
 
-#if FLUID_METHOD == 0
 	pbfWorld->SetSmoothingLength(m_smoothingLength);
 	pbfWorld->InitializeSimulationData(m_numOfParticles);
-#elif FLUID_METHOD == 1
-	iisphWorld->SetSmoothingLength(m_smoothingLength);
-	iisphWorld->InitializeSimulationData(m_numOfParticles);
-#elif FLUID_METHOD == 2
-	wcsphWorld->SetSmoothingLength(m_smoothingLength);
-	wcsphWorld->InitializeSimulationData(m_numOfParticles);
-#endif
 
 	float diameter = 2.0f * p_particleRadius;
 
@@ -50,6 +35,8 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 		for (int i = 0; i < m_numOfParticles; i++)
 		{
 			m_particles[i] = new FParticle();
+			m_particles[i]->m_pid = Fluid;
+			m_particles[i]->m_pIdx = i;
 			m_particles[i]->m_mass = 0.8f * m_restDensity * diameter * diameter * diameter;
 			m_particles[i]->m_restPosition = p_damParticles[i];
 			m_particles[i]->m_curPosition = p_damParticles[i];
@@ -64,6 +51,8 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 		for (int i = 0; i < m_numOfBoundaryParticles; i++)
 		{
 			m_boundaryParticles[i] = new FParticle();
+			m_boundaryParticles[i]->m_pid = Boundary;
+			m_boundaryParticles[i]->m_pIdx = i;
 			m_boundaryParticles[i]->m_mass = 0.8f * m_restDensity * diameter * diameter * diameter;
 			m_boundaryParticles[i]->m_restPosition = p_containerParticles[i];
 			m_boundaryParticles[i]->m_curPosition = p_containerParticles[i];
@@ -77,22 +66,20 @@ void FluidWorld::CreateParticles(std::vector<Vector3f>& p_damParticles, std::vec
 #pragma omp for schedule(static)
 		for (int i = 0; i < m_numOfBoundaryParticles; i++)
 		{
+			FParticle* pi = m_boundaryParticles[i];
 			float delta = k.Cubic_Kernel0();
 			for (int j = 0; j < m_numOfBoundaryParticles; j++)
 			{
-				Vector3f r = m_boundaryParticles[i]->m_restPosition - m_boundaryParticles[j]->m_restPosition;
+				FParticle* pj = m_boundaryParticles[j];
+				Vector3f r = pi->m_restPosition - pj->m_restPosition;
+				
 				if (i != j && r.norm() <= m_smoothingLength)
-				{
 					delta += k.Cubic_Kernel(r);
-				}
 			}
 			float volume = 1.0f / delta;
-			m_boundaryParticles[i]->m_mass = m_restDensity * volume;
+			pi->m_mass = m_restDensity * volume;
 		}
 	}
-
-	if(p_particleRadius == 0.025f)
-		debugFlag = true;
 }
 void FluidWorld::Reset()
 {
@@ -102,62 +89,8 @@ void FluidWorld::Reset()
 		m_particles[i]->m_velocity.setZero();
 		m_particles[i]->m_curPosition = m_particles[i]->m_restPosition;
 	}
-#if FLUID_METHOD == 0
+	
 	pbfWorld->Reset();
-#elif FLUID_METHOD == 1
-	iisphWorld->Reset();
-#elif FLUID_METHOD == 2
-	wcsphWorld->Reset();
-#endif
-
-}
-void FluidWorld::AddFParticle(Vector3f p_position, Vector3f p_velocity)
-{
-	float diameter = 2.0f * m_particleRadius;
-
-	FParticle * aP = new FParticle();
-	aP->m_mass = 0.8f * m_restDensity * diameter * diameter * diameter;
-	aP->m_restPosition = aP->m_curPosition = p_position;
-	aP->m_velocity = p_velocity;
-	aP->m_acceleration.setZero();
-
-	m_particles.push_back(aP);
-	m_numOfParticles += 1;
-
-#if FLUID_METHOD == 0
-	pbfWorld->InitializeSimulationData(m_numOfParticles);
-#elif FLUID_METHOD == 1
-	iisphWorld->InitializeSimulationData(m_numOfParticles);
-#elif FLUID_METHOD == 2
-	wcsphWorld->InitializeSimulationData(m_numOfParticles);
-#endif
-}
-void FluidWorld::DeleteFParticle(int p_idx)
-{
-	m_particles.erase(m_particles.begin() + p_idx);
-	m_numOfParticles = m_particles.size();
-
-#if FLUID_METHOD == 0
-	pbfWorld->InitializeSimulationData(m_numOfParticles);
-#elif FLUID_METHOD == 1
-	iisphWorld->InitializeSimulationData(m_numOfParticles);
-#elif FLUID_METHOD == 2
-	wcsphWorld->InitializeSimulationData(m_numOfParticles);
-#endif
-}
-void FluidWorld::DeleteAll()
-{
-	m_numOfParticles = 0;
-	m_particles.clear();
-	m_particles.resize(0);
-
-#if FLUID_METHOD == 0
-	pbfWorld->InitializeSimulationData(0);
-#elif FLUID_METHOD == 1
-	iisphWorld->InitializeSimulationData(0);
-#elif FLUID_METHOD == 2
-	wcsphWorld->InitializeSimulationData(0);
-#endif
 }
 void FluidWorld::NeighborListUpdate()
 {
@@ -166,22 +99,23 @@ void FluidWorld::NeighborListUpdate()
 #pragma omp for schedule(static)
 		for (int i = 0; i < m_numOfParticles; i++)
 		{
-			m_particles[i]->m_neighborList.clear();
-			m_particles[i]->m_neighborBoundaryList.clear();
-			m_particles[i]->m_neighborList.resize(0);
-			m_particles[i]->m_neighborBoundaryList.resize(0);
+			FParticle* pi = m_particles[i];
+			pi->m_neighborList.clear();
+			pi->m_neighborList.resize(0);
 
 			for (int j = 0; j < m_numOfParticles; j++)
 			{
-				Vector3f r = m_particles[i]->m_curPosition - m_particles[j]->m_curPosition;
-				if (i != j && r.norm() <= m_smoothingLength)
-					m_particles[i]->m_neighborList.push_back(j);
+				FParticle* pj = m_particles[j];
+				Vector3f r = pi->m_curPosition - pj->m_curPosition;
+				if (i != j && r.norm() < m_smoothingLength)
+					pi->m_neighborList.push_back(pj);
 			}
 			for (int j = 0; j < m_numOfBoundaryParticles; j++)
 			{
-				Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[j]->m_curPosition;
-				if (r.norm() <= m_smoothingLength)
-					m_particles[i]->m_neighborBoundaryList.push_back(j);
+				FParticle* pj = m_boundaryParticles[j];
+				Vector3f r = pi->m_curPosition - pj->m_curPosition;
+				if (r.norm() < m_smoothingLength)
+					pi->m_neighborList.push_back(pj);
 			}
 		}
 	}
@@ -196,23 +130,16 @@ void FluidWorld::ComputeDensities()
 		for (int i = 0; i < numParticles; i++)
 		{
 			// Compute current density for particle i
-			m_particles[i]->m_density = m_particles[i]->m_mass * k.Cubic_Kernel0();
+			FParticle *pi = m_particles[i];
+			pi->m_density = pi->m_mass * k.Cubic_Kernel0();
 
-			for (int j = 0; j < m_particles[i]->m_neighborList.size(); j++)
+			for (int j = 0; j < pi->m_neighborList.size(); j++)
 			{
-				int idx = m_particles[i]->m_neighborList[j];
-				Vector3f r = m_particles[i]->m_curPosition - m_particles[idx]->m_curPosition;
+				FParticle* pj = pi->m_neighborList[j];
+				Vector3f r = pi->m_curPosition - pj->m_curPosition;
 
-				m_particles[i]->m_density += m_particles[idx]->m_mass * k.Cubic_Kernel(r);
+				pi->m_density += pj->m_mass * k.Cubic_Kernel(r);
 			}
-
-			for (int j = 0; j < m_particles[i]->m_neighborBoundaryList.size(); j++)
-			{
-				int idx = m_particles[i]->m_neighborBoundaryList[j];
-				Vector3f r = m_particles[i]->m_curPosition - m_boundaryParticles[idx]->m_curPosition;
-				m_particles[i]->m_density += m_boundaryParticles[idx]->m_mass * k.Cubic_Kernel(r);
-			}
-
 		}
 	}
 }
@@ -263,26 +190,6 @@ void FluidWorld::UpdateTimeStepSizeCFL()
 
 	m_timeStep = h;
 }
-int  FluidWorld::GetFluidMethodNumber()
-{
-#if FLUID_METHOD == 0
-	return 0;
-#elif FLUID_METHOD == 1
-	return 1;
-#elif FLUID_METHOD == 2
-	return 2;
-#endif
-}
-void* FluidWorld::GetFluidMethod()
-{
-#if FLUID_METHOD == 0
-	return pbfWorld;
-#elif FLUID_METHOD == 1
-	return iisphWorld;
-#elif FLUID_METHOD == 2
-	return wcsphWorld;
-#endif
-}
 
 void FluidWorld::StepPBF()
 {
@@ -294,13 +201,14 @@ void FluidWorld::StepPBF()
 #pragma omp for schedule(static)  
 		for (int i = 0; i < m_numOfParticles; i++)
 		{
-			m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-			m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
+			FParticle* pi = m_particles[i];
+			pi->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
+			pi->m_oldPosition = pi->m_curPosition;
 
-			if (m_particles[i]->m_mass != 0.0f)
+			if (pi->m_mass != 0.0f)
 			{
-				m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
-				m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
+				pi->m_velocity += pi->m_acceleration * h;
+				pi->m_curPosition += pi->m_velocity * h;
 			}
 		}
 	}
@@ -319,11 +227,11 @@ void FluidWorld::StepPBF()
 
 	pbfWorld->ComputeXSPHViscosity(m_particles);
 
-	//UpdateTimeStepSizeCFL();
+	UpdateTimeStepSizeCFL();
 
 	m_accTimeIntegration += h;
 }
-void FluidWorld::StepPBFonFine()
+void FluidWorld::StepPBFonSub()
 {
 	float h = m_timeStep;
 #pragma omp parallel default(shared)
@@ -331,13 +239,9 @@ void FluidWorld::StepPBFonFine()
 #pragma omp for schedule(static)  
 		for (int i = 0; i < m_numOfParticles; i++)
 		{
-			//m_particles[i]->m_deltaX.setZero();
-			m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
-
-			if (m_particles[i]->m_mass != 0.0f)
-			{
-				m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
-			}
+			FParticle* pi = m_particles[i];
+			pi->m_oldPosition = pi->m_curPosition;
+			pi->m_curPosition += pi->m_velocity * h;
 		}
 	}
 
@@ -359,6 +263,7 @@ void FluidWorld::StepPBFonFine()
 
 	m_accTimeIntegration += h;
 }
+
 void FluidWorld::StepPBFonSub1()
 {
 	float h = m_timeStep;
@@ -369,14 +274,14 @@ void FluidWorld::StepPBFonSub1()
 #pragma omp for schedule(static)  
 		for (int i = 0; i < m_numOfParticles; i++)
 		{
-			m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-			m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
-			if (m_particles[i]->m_mass != 0.0f)
-			{
-				m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
-				m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
-				m_particles[i]->m_tempPosition = m_particles[i]->m_curPosition;
-			}
+			FParticle* pi = m_particles[i];
+			pi->m_acceleration.setZero();
+			pi->m_acceleration[1] = -9.8f;
+			pi->m_oldPosition = pi->m_curPosition;
+			
+			pi->m_velocity += pi->m_acceleration * h;
+			pi->m_curPosition += pi->m_velocity * h;
+			pi->m_tempPosition = pi->m_curPosition;
 		}
 	}
 
@@ -414,18 +319,17 @@ void FluidWorld::StepPBFonSub1WithTF()
 #pragma omp for schedule(static)  
 		for (int i = 0; i < m_numOfParticles; i++)
 		{
-			m_particles[i]->m_acceleration = Vector3f(0.0f, -9.8f, 0.0f);
-			m_particles[i]->m_oldPosition = m_particles[i]->m_curPosition;
-			if (m_particles[i]->m_mass != 0.0f)
-			{
-				m_particles[i]->m_velocity += m_particles[i]->m_acceleration * h;
-				m_particles[i]->m_curPosition += m_particles[i]->m_velocity * h;
-			}
+			FParticle* pi = m_particles[i];
+			pi->m_acceleration.setZero();
+			pi->m_acceleration[1] = -9.8f;
+			pi->m_oldPosition = pi->m_curPosition;
+			
+			pi->m_velocity += pi->m_acceleration * h;
+			pi->m_curPosition += pi->m_velocity * h;
 		}
 	}
 	//NeighborListUpdate();
 }
-
 void FluidWorld::StepPBFonSub2WithTF()
 {
 	float h = m_timeStep;

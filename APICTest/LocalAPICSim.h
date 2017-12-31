@@ -18,7 +18,6 @@ public:
 	LAPIC() {};
 	void Initialize(Vector3f p_bSize, Vector3i p_nCount, float p_rho);
 	void LAPICDesc(float result[], FParticle* p_center, std::vector<FParticle*>& p_list, float p_radii);
-	void GetNeigboringParticles_cell(int i, int j, int k, int wl, int wh, int hl, int hh, int dl, int dh, std::vector<FParticle *>& res);
 	Vector3f GetVelocity(Vector3f& pos);
 	float GetMass(Vector3f& pos);
 
@@ -46,20 +45,9 @@ private:
 	std::vector<Vector3f> cells_pos;
 	std::vector<Vector3i> AssignResult;
 
-	inline float interpolate_value(Vector3f& point, APICArray3d::Array3d<float>& grid)
-	{
-		int i, j, k;
-		float fx, fy, fz;
-		float result;
-
-		get_barycentric(point[0], i, fx, 0, grid.width);
-		get_barycentric(point[1], j, fy, 0, grid.height);
-		get_barycentric(point[2], k, fz, 0, grid.depth);
-
-		return trilerp(grid.get(i, j, k), grid.get(i + 1, j, k), grid.get(i, j + 1, k), grid.get(i + 1, j + 1, k),
-			grid.get(i, j, k + 1), grid.get(i + 1, j, k + 1), grid.get(i, j + 1, k + 1), grid.get(i + 1, j + 1, k + 1),
-			fx, fy, fz);
-	}
+	void GetNeigboringParticles_cell(int i, int j, int k, int wl, int wh, int hl, int hh, int dl, int dh, std::vector<FParticle *>& res);
+	inline float interpolate_value(Vector3f& point, APICArray3d::Array3d<float>& grid);
+	
 };
 
 inline float linear_kernel(const Vector3f& d, const float& h)

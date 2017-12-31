@@ -248,13 +248,13 @@ void PBFControl::UpdateTrainingDataForSub(FluidWorld* p_subWorld)
 		for (int j = 0; j < fineP[i]->m_neighborList.size(); j++)
 		{
 			TrainData a;
-			unsigned int idx = fineP[i]->m_neighborList[j];
-			Vector3f r = finePos - fineP[idx]->m_curPosition;
-			a.mass = fineP[idx]->m_mass;
+			FParticle* pj = fineP[i]->m_neighborList[j];
+			Vector3f r = finePos - pj->m_curPosition;
+			a.mass = pj->m_mass;
 			a.kWeight = subKernel.Cubic_Kernel(r);
 			a.RVec = r;
 			a.kGrad = subKernel.Cubic_Kernel_Gradient(r);
-			a.dPos = fineP[idx]->m_curPosition - fineP[idx]->m_oldPosition;
+			a.dPos = pj->m_curPosition - pj->m_oldPosition;
 			m_tDataForSub[i].push_back(a);
 		}
 		/*

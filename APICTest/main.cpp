@@ -6,7 +6,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include "APICSim.h"
+#include "LocalAPICSim.h"
 #include "..\PositionBasedFluid\FluidWorld.h"
 #include "..\PositionBasedFluid\TimerChrono.h"
 
@@ -45,14 +45,14 @@ Vector3f containerEnd;
 bool doPause = true;
 int accFrameCount = 0;
 
-APICSim sim;
+LAPIC lpic;
 FluidWorld* world;
 
 int frameLimit = 1600;
 GLint context_major_version, context_minor_version;
 Primitive spherePrimiCoarse, spherePrimiFine, boxPrimi;
 
-float* dataForPICDescriptor;
+float* descLAPIC;
 int desc_width = 5;
 
 int main(int argc, char** argv)
@@ -98,14 +98,12 @@ void timeStep()
 	timer1.end("Simulation");
 
 	timer2.start();
-	sim.AssignCells(world);
-	sim.Map_P2G(world);
+	for (int i = 0; i < world->GetNumOfParticles(); i++)
+	{
+		FParticle* p = world->GetParticle(i);
+		lpic.LAPICDesc(descLAPIC, p, p->m_neighborList, world->GetParticleRadius());
+	}
 	timer2.end("PIC Update");
-
-	timer3.start();
-	sim.GetAPICDescriptorAll(dataForPICDescriptor, desc_width);
-	timer3.end("Desc Update");
-	
 	
 	accFrameCount++;
 	if (accFrameCount > frameLimit)
@@ -145,23 +143,27 @@ void render()
 	float boxColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	float pointColor[4] = { 0.1f, 0.1f, 0.9f, 1.0f };
 	// draw grid & arrow
-	Vector3f nijk = sim.GetNiNjNk();
-	Vector3f dxyz = sim.GetDxDyDz();
+	Vector3f nijk = lpic.GetNiNjNk();
+	Vector3f dxyz = lpic.GetDxDyDz();
 	float head_len = 0.5f*dxyz[0];
 	
+	/*
 	for (int k=0; k<nijk[2]; k++)
 		for (int j = 0; j<nijk[1]; j++)
 			for (int i = 0; i<nijk[0]; i++)
 			{
-				Vector3f pos = sim.GetGridPos(i, j, k);
+				Vector3f pos = lpic.GetGridPos(i, j, k);
 				
+				boxPrimi.renderWireFrameBox(pos, dxyz, boxColor);
+
 				//float m_value = sim.GetMass(pos);
 				//if(m_value != 0)
 					//boxPrimi.renderPoint(pos, boxColor, 1.0f);
 				
-				Vector3f end = (pos + 0.1f * sim.GetVelocity(pos));
+				Vector3f end = (pos + 0.1f * lpic.GetVelocity(pos));
 				boxPrimi.renderArrow3D(pos, end, head_len);
-			}	
+			}
+	*/
 }
 void cleanup()
 {
@@ -181,21 +183,21 @@ void buildModel()
 {
 	std::vector<Vector3f> boundaryParticles;
 	std::vector<Vector3f> damParticles;
-	//CreateCoarseBreakingDam(damParticles);
-	//CreateCoarseContainer(boundaryParticles);
-	CreateFineBreakingDam(damParticles);
-	CreateFineContainer(boundaryParticles);
+	CreateCoarseBreakingDam(damParticles);
+	CreateCoarseContainer(boundaryParticles);
+	//CreateFineBreakingDam(damParticles);
+	//CreateFineContainer(boundaryParticles);
 	
 	world = new FluidWorld();
 	world->SetTimeStep(0.005f);
-	world->CreateParticles(damParticles, boundaryParticles, fineR);
+	world->CreateParticles(damParticles, boundaryParticles, coarseR);
 
-	Vector3f bSize = containerEnd - containerStart;
-	sim.Initialize(world, containerStart, containerEnd - containerStart, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
-	sim.AssignBoundary(world->GetBoundaryParticleList());
-
+	float doubleSL = 2.0f * world->GetSmoothingLength() + 2.0f * coarseR;
+	Vector3f bSize = Vector3f(doubleSL, doubleSL, doubleSL);
+	lpic.Initialize(bSize,Vector3i(desc_width, desc_width, desc_width), 1.0);
+	
 	int blockSize = desc_width * desc_width * desc_width;
-	dataForPICDescriptor = (float*)malloc(sizeof(float) * 4 * blockSize * damParticles.size());
+	descLAPIC = (float*)malloc(sizeof(float) * 4 * blockSize);
 }
 
 void CreateCoarseBreakingDam(std::vector<Vector3f>& p_damParticles)

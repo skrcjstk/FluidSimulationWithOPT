@@ -52,7 +52,7 @@ void LAPIC::LAPICDesc(float result[], FParticle* p_center, std::vector<FParticle
 #pragma omp for schedule(static)
 	for (int k = 0; k < nk; k++)
 		for (int j = 0; j < nj; j++)
-			for (int i = 0; i < ni + 1; i++)
+			for (int i = 0; i < ni; i++)
 			{
 				cells[(k*nj*ni) + j*ni + i].clear();
 				cells_pos[(k*nj*ni) + j*ni + i] = Vector3f(i * dx, j * dy, k * dz) + origin;
@@ -95,9 +95,12 @@ void LAPIC::LAPICDesc(float result[], FParticle* p_center, std::vector<FParticle
 					float sum_u = 0.0;
 					for (FParticle* p : neighbors)
 					{
-						float weight = 4.0 / 3.0 * M_PI * rho * p_radii * p_radii * p_radii * linear_kernel(p->m_curPosition - pos, dx);
-						sum_u += weight * p->m_velocity[0]; // +p->m_c.col(0).dot(pos - p->m_curPosition);
-						sum_weight += weight;
+						if (p->m_pid == Fluid)
+						{
+							float weight = 4.0 / 3.0 * M_PI * rho * p_radii * p_radii * p_radii * linear_kernel(p->m_curPosition - pos, dx);
+							sum_u += weight * p->m_velocity[0]; // +p->m_c.col(0).dot(pos - p->m_curPosition);
+							sum_weight += weight;
+						}
 					}
 
 					if (sum_weight != 0.0)
@@ -120,9 +123,12 @@ void LAPIC::LAPICDesc(float result[], FParticle* p_center, std::vector<FParticle
 					float sum_u = 0.0;
 					for (FParticle* p : neighbors)
 					{
-						float weight = 4.0 / 3.0 * M_PI * rho * p_radii * p_radii * p_radii * linear_kernel(p->m_curPosition - pos, dy);
-						sum_u += weight * p->m_velocity[1]; //+ p->m_c.col(1).dot(pos - p->m_curPosition);
-						sum_weight += weight;
+						if (p->m_pid == Fluid)
+						{
+							float weight = 4.0 / 3.0 * M_PI * rho * p_radii * p_radii * p_radii * linear_kernel(p->m_curPosition - pos, dy);
+							sum_u += weight * p->m_velocity[1]; //+ p->m_c.col(1).dot(pos - p->m_curPosition);
+							sum_weight += weight;
+						}
 					}
 
 					if (sum_weight != 0.0)
@@ -145,9 +151,12 @@ void LAPIC::LAPICDesc(float result[], FParticle* p_center, std::vector<FParticle
 					float sum_u = 0.0;
 					for (FParticle* p : neighbors)
 					{
-						float weight = 4.0 / 3.0 * M_PI * rho * p_radii * p_radii * p_radii * linear_kernel(p->m_curPosition - pos, dz);
-						sum_u += weight * p->m_velocity[2]; // +p->m_c.col(2).dot(pos - p->m_curPosition);
-						sum_weight += weight;
+						if (p->m_pid == Fluid)
+						{
+							float weight = 4.0 / 3.0 * M_PI * rho * p_radii * p_radii * p_radii * linear_kernel(p->m_curPosition - pos, dz);
+							sum_u += weight * p->m_velocity[2]; // +p->m_c.col(2).dot(pos - p->m_curPosition);
+							sum_weight += weight;
+						}
 					}
 
 					if (sum_weight != 0.0)
@@ -170,9 +179,12 @@ void LAPIC::LAPICDesc(float result[], FParticle* p_center, std::vector<FParticle
 					float sum_u = 0.0;
 					for (FParticle* p : neighbors)
 					{
-						float weight = 4.0 / 3.0 * M_PI * rho * p_radii * p_radii * p_radii * linear_kernel(p->m_curPosition - pos, dz);
-						sum_u += weight * p->m_mass; // +p->m_c.col(2).dot(pos - p->m_curPosition);
-						sum_weight += weight;
+						if (p->m_pid == Fluid)
+						{
+							float weight = 4.0 / 3.0 * M_PI * rho * p_radii * p_radii * p_radii * linear_kernel(p->m_curPosition - pos, dz);
+							sum_u += weight * p->m_mass; // +p->m_c.col(2).dot(pos - p->m_curPosition);
+							sum_weight += weight;
+						}
 					}
 
 					if (sum_weight != 0.0)
@@ -231,4 +243,19 @@ float LAPIC::GetMass(Vector3f& pos)
 	float m_value = interpolate_value(p, m);
 
 	return m_value;
+}
+
+inline float LAPIC::interpolate_value(Vector3f& point, APICArray3d::Array3d<float>& grid)
+{
+	int i, j, k;
+	float fx, fy, fz;
+	float result;
+
+	get_barycentric(point[0], i, fx, 0, grid.width);
+	get_barycentric(point[1], j, fy, 0, grid.height);
+	get_barycentric(point[2], k, fz, 0, grid.depth);
+
+	return trilerp(grid.get(i, j, k), grid.get(i + 1, j, k), grid.get(i, j + 1, k), grid.get(i + 1, j + 1, k),
+		grid.get(i, j, k + 1), grid.get(i + 1, j, k + 1), grid.get(i, j + 1, k + 1), grid.get(i + 1, j + 1, k + 1),
+		fx, fy, fz);
 }

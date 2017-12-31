@@ -125,36 +125,34 @@ void timeStep()
 	// Simulation code
 	for (unsigned int i = 0; i < 1; i++)
 	{
-		if (world->GetFluidMethodNumber() == 0) // PBF case
-		{
-			// PBFC simulation
-			//float deltaT = subWorld->GetTimeStep();
-			//world->SetTimeStep(deltaT);
-			world->StepPBF();
+		// PBFC simulation
+		//float deltaT = subWorld->GetTimeStep();
+		//world->SetTimeStep(deltaT);
+		world->StepPBF();
 
-			// fine advection and neighbor update
-			subWorld->StepPBFonSub1();
+		// fine advection and neighbor update
+		subWorld->StepPBFonSub1();
 			
-			picForCoarse.AssignCells(world);
-			picForCoarse.Map_P2G(world);
-			picForFine.AssignCells(subWorld);
-			picForFine.Map_P2G(subWorld);
+		picForCoarse.AssignCells(world);
+		picForCoarse.Map_P2G(world);
+		picForFine.AssignCells(subWorld);
+		picForFine.Map_P2G(subWorld);
 
-			// neighbor update between fine and coarse
-			pbfc.NeighborBTWTwoResForPBFC(world, subWorld);
-			//pbfc.UpdateTrainingDataForMain(world, subWorld);
-			//pbfc.UpdateTrainingDataForSub(subWorld);
+		// neighbor update between fine and coarse
+		pbfc.NeighborBTWTwoResForPBFC(world, subWorld);
+		//pbfc.UpdateTrainingDataForMain(world, subWorld);
+		//pbfc.UpdateTrainingDataForSub(subWorld);
 
-			// update lambda for coarse & solve density and velocity constraints
-			pbfc.SolvePBFCConstaints(world, subWorld);
+		// update lambda for coarse & solve density and velocity constraints
+		pbfc.SolvePBFCConstaints(world, subWorld);
 
-			// fine density relaxing and update
-			subWorld->StepPBFonSub2();
+		// fine density relaxing and update
+		subWorld->StepPBFonSub2();
 
-			// Data save
-			PICTrainingDataSave();
-			//DataSave();
-		}
+		// Data save
+		PICTrainingDataSave();
+		//DataSave();
+		
 	}
 	if (accFrameCount > saveFrameLimit)
 	{

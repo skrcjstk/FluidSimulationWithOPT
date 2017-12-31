@@ -58,29 +58,23 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 			for (int i = 0; i < numParticles; i++)
 			{
 				// computePBFDensity
-				p_particles[i]->m_density = p_particles[i]->m_mass * m_kernel.Cubic_Kernel0();
+				FParticle* pi = p_particles[i];
+				pi->m_density = pi->m_mass * m_kernel.Cubic_Kernel0();
 
-				for (unsigned int j = 0; j < p_particles[i]->m_neighborList.size(); j++)
+				for (unsigned int j = 0; j < pi->m_neighborList.size(); j++)
 				{
-					unsigned int idx = p_particles[i]->m_neighborList[j];
-					Vector3f r = p_particles[i]->m_curPosition - p_particles[idx]->m_curPosition;
+					FParticle* pj = pi->m_neighborList[j];
+					Vector3f r = pi->m_curPosition - pj->m_curPosition;
 
-					p_particles[i]->m_density += p_particles[idx]->m_mass * m_kernel.Cubic_Kernel(r);
+					pi->m_density += pj->m_mass * m_kernel.Cubic_Kernel(r);
 				}
 
-				for (unsigned int j = 0; j < p_particles[i]->m_neighborBoundaryList.size(); j++)
-				{
-					unsigned int idx = p_particles[i]->m_neighborBoundaryList[j];
-					Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx]->m_curPosition;
-					p_particles[i]->m_density += p_boundaryParticles[idx]->m_mass * m_kernel.Cubic_Kernel(r);
-				}
-
-				float density_err = std::max(p_particles[i]->m_density, density0) - density0;
+				float density_err = std::max(pi->m_density, density0) - density0;
 #pragma omp atomic
 				avg_density_err += density_err / (float)numParticles;
 
 				// Evaluate constraint function
-				float C = std::max(p_particles[i]->m_density / density0 - 1.0f, 0.0f);
+				float C = std::max(pi->m_density / density0 - 1.0f, 0.0f);
 
 				if (C != 0.0f)
 				{
@@ -88,22 +82,12 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 					float sum_grad_C2 = 0.0;
 					Vector3f gradC_i(0.0f, 0.0f, 0.0f);
 
-					for (unsigned int j = 0; j < p_particles[i]->m_neighborList.size(); j++)
+					for (unsigned int j = 0; j < pi->m_neighborList.size(); j++)
 					{
-						unsigned int idx = p_particles[i]->m_neighborList[j];
-						Vector3f r = p_particles[i]->m_curPosition - p_particles[idx]->m_curPosition;
+						FParticle* pj = pi->m_neighborList[j];
+						Vector3f r = pi->m_curPosition - pj->m_curPosition;
 
-						Vector3f gradC_j = -p_particles[idx]->m_mass / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
-						sum_grad_C2 += gradC_j.squaredNorm();
-						gradC_i -= gradC_j;
-					}
-
-					for (unsigned int j = 0; j < p_particles[i]->m_neighborBoundaryList.size(); j++)
-					{
-						unsigned int idx = p_particles[i]->m_neighborBoundaryList[j];
-						Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx]->m_curPosition;
-
-						Vector3f gradC_j = -p_boundaryParticles[idx]->m_mass / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
+						Vector3f gradC_j = -pj->m_mass / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
 						sum_grad_C2 += gradC_j.squaredNorm();
 						gradC_i -= gradC_j;
 					}
@@ -124,25 +108,19 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 			for (int i = 0; i < numParticles; i++)
 			{
 				Vector3f corr(0.0f, 0.0f, 0.0f);
+				FParticle* pi = p_particles[i];
 
-				for (unsigned int j = 0; j < p_particles[i]->m_neighborList.size(); j++)
+				for (unsigned int j = 0; j < pi->m_neighborList.size(); j++)
 				{
-					unsigned int idx = p_particles[i]->m_neighborList[j];
-					Vector3f r = p_particles[i]->m_curPosition - p_particles[idx]->m_curPosition;
+					FParticle* pj = pi->m_neighborList[j];
+					Vector3f r = pi->m_curPosition - pj->m_curPosition;
+					Vector3f gradC_j = -pj->m_mass / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
 
-					Vector3f gradC_j = -p_particles[idx]->m_mass / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
-					corr -= (m_particlesLambda[i] + m_particlesLambda[idx]) * gradC_j;
+					if(pj->m_pid==Fluid)
+						corr -= (m_particlesLambda[i] + m_particlesLambda[pj->m_pIdx]) * gradC_j;
+					else
+						corr -= (m_particlesLambda[i]) * gradC_j;
 				}
-
-				for (unsigned int j = 0; j < p_particles[i]->m_neighborBoundaryList.size(); j++)
-				{
-					unsigned int idx = p_particles[i]->m_neighborBoundaryList[j];
-					Vector3f r = p_particles[i]->m_curPosition - p_boundaryParticles[idx]->m_curPosition;
-
-					Vector3f gradC_j = -p_boundaryParticles[idx]->m_mass / m_restDensity * m_kernel.Cubic_Kernel_Gradient(r);
-					corr -= (m_particlesLambda[i]) * gradC_j;
-				}
-
 				m_deltaX[i] = corr;
 			}
 
@@ -160,22 +138,23 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 void PBFWorld::ComputeXSPHViscosity(std::vector<FParticle*>& p_particles)
 {
 	unsigned int numParticles = p_particles.size();
-
-	// Compute viscosity forces (XSPH)
 #pragma omp parallel default(shared)
 	{
 #pragma omp for schedule(static)  
+		// Compute viscosity forces (XSPH)
 		for (int i = 0; i < numParticles; i++)
 		{
-			for (unsigned int j = 0; j < p_particles[i]->m_neighborList.size(); j++)
+			FParticle* pi = p_particles[i];
+			for (unsigned int j = 0; j < pi->m_neighborList.size(); j++)
 			{
-				unsigned int idx = p_particles[i]->m_neighborList[j];
-				Vector3f r = p_particles[i]->m_curPosition - p_particles[idx]->m_curPosition;
+				FParticle* pj = pi->m_neighborList[j];
+				if (pj->m_pid == Fluid)
+				{
+					Vector3f r = pi->m_curPosition - pj->m_curPosition;
+					Vector3f velCorr = m_viscosity * (pj->m_mass / pj->m_density) * (pi->m_velocity - pj->m_velocity) * m_kernel.Cubic_Kernel(r);
 
-				Vector3f velCorr = m_viscosity * (p_particles[idx]->m_mass / p_particles[idx]->m_density)
-					* (p_particles[i]->m_velocity - p_particles[idx]->m_velocity) * m_kernel.Cubic_Kernel(r);
-
-				p_particles[i]->m_velocity -= velCorr;
+					pi->m_velocity -= velCorr;
+				}
 			}
 		}
 	}
