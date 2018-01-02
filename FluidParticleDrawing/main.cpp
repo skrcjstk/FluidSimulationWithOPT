@@ -11,9 +11,9 @@ using namespace PBD;
 using namespace std;
 using namespace Eigen;
 
-//string positionDataPath = "E:/Tensorflow/tensorflow/tensorflow/contrib/cmake/build/modelLoader/PBFCTrainSD9M3_171215/";
-string positionDataPath = "../FluidSimulationWithOPT/PBFCDataScene/v0.01/";
-int frameLimit = 1600;
+string positionDataPath = "E:/Tensorflow/tensorflow/tensorflow/contrib/cmake/build/modelLoader/PBFCTrainSD11_180102/";
+//string positionDataPath = "../FluidSimulationWithOPT/PBFCDataScene/v0.01/";
+int frameLimit = 700;
 
 GLint context_major_version, context_minor_version;
 Primitive spherePrimiCoarse, spherePrimiFine, boxPrimi;

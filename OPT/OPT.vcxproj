@@ -139,14 +139,12 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\APICTest\APICSim.h" />
     <ClInclude Include="FlowBoundary.h" />
     <ClInclude Include="PBFControl.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\APICTest\APICSim.cpp" />
     <ClCompile Include="FlowBondary.cpp" />
     <ClCompile Include="PBFContol.cpp" />
     <ClCompile Include="stdafx.cpp" />

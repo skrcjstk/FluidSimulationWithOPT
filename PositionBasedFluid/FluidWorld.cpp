@@ -227,7 +227,7 @@ void FluidWorld::StepPBF()
 
 	pbfWorld->ComputeXSPHViscosity(m_particles);
 
-	UpdateTimeStepSizeCFL();
+	//UpdateTimeStepSizeCFL();
 
 	m_accTimeIntegration += h;
 }

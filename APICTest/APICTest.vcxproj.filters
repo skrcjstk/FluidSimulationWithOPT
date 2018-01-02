@@ -21,9 +21,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="..\FluidSimulationWithOPT\PrimitiveBuffer.cpp">
       <Filter>소스 파일\Visualization</Filter>
     </ClCompile>
@@ -36,10 +33,16 @@
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Shader.cpp">
       <Filter>소스 파일\Visualization</Filter>
     </ClCompile>
-    <ClCompile Include="APICSim.cpp">
+    <ClCompile Include="LPIC_main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="LocalAPICSim.cpp">
+    <ClCompile Include="LPIC.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="PIC.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="PIC_main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -62,13 +65,13 @@
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Visualization.h">
       <Filter>헤더 파일\Visualization</Filter>
     </ClInclude>
-    <ClInclude Include="APICSim.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="Array3d.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="LocalAPICSim.h">
+    <ClInclude Include="PIC.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="LPIC.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

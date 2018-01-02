@@ -11,7 +11,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include "..\APICTest\APICSim.h"
+#include "..\APICTest\PIC.h"
 #include <ctime>
 
 //#define ENV_LOAD
@@ -51,9 +51,9 @@ TimerChrono timer;
 FluidWorld* world;
 FluidWorld* subWorld;
 PBFControl pbfc;
-APICSim picForCoarse, picForFine;
+PIC picForCoarse, picForFine;
 float *descForCoarse, *descForFine, *gtForFine;
-int descWidthForC=5, descWidthForF=3;
+int descWidthForC=5, descWidthForF=5;
 int sampleCount = 6000;
 
 float fineR = 0.025f;
@@ -68,7 +68,7 @@ int coarseDamHeight = fineDamHeight / 2;
 int coarseDamDepth = fineDamDepth / 2;
 float containerWidth = (coarseDamWidth + 1) * coarseR * 2.0f * 5.0f;
 float containerHeight = 3.0f;
-float containerDepth = (coarseDamDepth + 1) * coarseR * 2.0f;
+float containerDepth = (coarseDamDepth + 1) * coarseR * 2.0f * 3.0f;
 
 Vector3f containerStart;
 Vector3f containerEnd;
@@ -133,10 +133,10 @@ void timeStep()
 		// fine advection and neighbor update
 		subWorld->StepPBFonSub1();
 			
-		picForCoarse.AssignCells(world);
-		picForCoarse.Map_P2G(world);
-		picForFine.AssignCells(subWorld);
-		picForFine.Map_P2G(subWorld);
+		//picForCoarse.AssignCells(world);
+		//picForCoarse.Map_P2G(world);
+		//picForFine.AssignCells(subWorld);
+		//picForFine.Map_P2G(subWorld);
 
 		// neighbor update between fine and coarse
 		pbfc.NeighborBTWTwoResForPBFC(world, subWorld);
@@ -150,7 +150,7 @@ void timeStep()
 		subWorld->StepPBFonSub2();
 
 		// Data save
-		PICTrainingDataSave();
+		//PICTrainingDataSave();
 		//DataSave();
 		
 	}
@@ -265,7 +265,7 @@ void buildModel_BreakingDam()
 	CreateCoarseContainer(boundaryParticles);
 			
 	world = new FluidWorld();
-	world->SetTimeStep(0.005f);
+	world->SetTimeStep(0.0025f);
 	world->CreateParticles(damParticles, boundaryParticles, coarseR);
 
 	// sub domain creation
@@ -275,25 +275,26 @@ void buildModel_BreakingDam()
 	CreateFineContainer(subBoundaryParticles);
 	
 	subWorld = new FluidWorld();
-	subWorld->SetTimeStep(0.005f);
+	subWorld->SetTimeStep(0.0025f);
 	subWorld->CreateParticles(subDamParticles, subBoundaryParticles, fineR);
-
+	
 	// FlowBoundary Setting and create fine ps
 	pbfc.Initialize(world, subWorld);
 	printf("coarse: %d, fine : %d\n", world->GetNumOfParticles(), subWorld->GetNumOfParticles());
 
+	/*
 	// PIC for coarse grid
 	Vector3f bSize = containerEnd - containerStart;
 	picForCoarse.Initialize(world, containerStart, bSize, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
 	picForCoarse.AssignBoundary(world->GetBoundaryParticleList());
 
 	// PIC for fine grid
-	picForFine.Initialize(subWorld, containerStart, bSize, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
+	picForFine.Initialize(subWorld, containerStart, bSize, Vector3i((int)(bSize[0] * 20), (int)(bSize[1] * 20), (int)(bSize[2] * 20)), 1.0);
 
 	descForCoarse = (float*)malloc(sizeof(float) * 4 * descWidthForC * descWidthForC * descWidthForC * sampleCount);
 	descForFine = (float*)malloc(sizeof(float) * 4 * descWidthForF * descWidthForF * descWidthForF * sampleCount);
 	gtForFine = (float*)malloc(sizeof(float) * 3 * sampleCount);
-
+	*/
 }
 void cleanup()
 {

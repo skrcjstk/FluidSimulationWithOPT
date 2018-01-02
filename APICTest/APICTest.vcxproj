@@ -154,9 +154,10 @@
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Camera.cpp" />
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\MiniGL.cpp" />
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Shader.cpp" />
-    <ClCompile Include="APICSim.cpp" />
-    <ClCompile Include="LocalAPICSim.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="PIC.cpp" />
+    <ClCompile Include="LPIC.cpp" />
+    <ClCompile Include="LPIC_main.cpp" />
+    <ClCompile Include="PIC_main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\FluidSimulationWithOPT\PrimitiveBuffer.h" />
@@ -165,9 +166,9 @@
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Selection.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Shader.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Visualization.h" />
-    <ClInclude Include="APICSim.h" />
+    <ClInclude Include="PIC.h" />
     <ClInclude Include="Array3d.h" />
-    <ClInclude Include="LocalAPICSim.h" />
+    <ClInclude Include="LPIC.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
