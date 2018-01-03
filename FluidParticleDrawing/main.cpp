@@ -113,6 +113,7 @@ void render()
 		spherePrimiFine.renderSphere(pos, subFluidColor);
 	}
 }
+
 void cleanup()
 {
 	if (context_major_version >= 3)

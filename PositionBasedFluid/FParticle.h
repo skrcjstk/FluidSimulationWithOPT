@@ -26,7 +26,6 @@ public:
 	Vector3f m_acceleration;
 		
 	std::vector<FParticle *> m_neighborList;
-	//std::vector<FParticle *> m_neighborBoundaryList;
 
 	Vector3f m_tempPosition;
 	Vector3f m_tempVelocity;

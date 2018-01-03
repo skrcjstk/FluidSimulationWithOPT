@@ -37,7 +37,7 @@ void FlowBoundary::CreateBoundaryWall(Vector3f p_min, Vector3f p_max)
 	printf("Boundary Wall - diff(%f, %f, %f)\n", diff[0], diff[1], diff[2]);
 	printf("Boundary Wall - count(%d, %d, %d)\n", countX, countY, countZ);
 
-	unsigned int startIndex = m_boundary.size();
+	int startIndex = (int)m_boundary.size();
 	m_boundary.resize(startIndex + countX*countY*countZ);
 
 #pragma omp parallel default(shared)

@@ -186,3 +186,17 @@ APICTest/x64/Release/Camera.obj
 FluidSimulationWithOPT.VC.VC.opendb
 FluidSimulationWithOPT.VC.db
 OPT/x64/Release/APICSim.obj
+APICTest/x64/Release/PIC.Build.CppClean.log
+APICTest/x64/Release/PIC.pdb
+APICTest/x64/Release/PIC.tlog/CL.command.1.tlog
+APICTest/x64/Release/PIC.tlog/CL.read.1.tlog
+APICTest/x64/Release/PIC.tlog/CL.write.1.tlog
+APICTest/x64/Release/PIC.tlog/Lib-link.write.1.tlog
+APICTest/x64/Release/PIC.tlog/Lib.read.1.tlog
+APICTest/x64/Release/PIC.tlog/PIC.lastbuildstate
+APICTest/x64/Release/PIC.tlog/lib.command.1.tlog
+FluidParticleDrawing/x64/Release/FluidParticleDrawing.Build.CppClean.log
+FluidSimulationWithOPT/x64/Release/LPIC_main.obj
+FluidSimulationWithOPT/x64/Release/PIC_main.obj
+OPT/x64/Release/LPIC.obj
+OPT/x64/Release/PIC.obj

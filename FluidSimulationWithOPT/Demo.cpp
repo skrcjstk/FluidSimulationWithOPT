@@ -1,3 +1,4 @@
+/*
 #include "GL/glew.h"
 #include "Visualization\MiniGL.h"
 #include "Visualization\Selection.h"
@@ -11,7 +12,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include "..\APICTest\PIC.h"
+#include "PIC.h"
 #include <ctime>
 
 //#define ENV_LOAD
@@ -81,7 +82,7 @@ int accFrameCount = 0;
 
 int main(int argc, char** argv)
 {
-	std::srand(std::time(nullptr));
+	std::srand((unsigned int)std::time(nullptr));
 
 	// OpenGL	
 	MiniGL::init(argc, argv, 1024, 768, 0, 0, "Fluid demo");
@@ -282,19 +283,19 @@ void buildModel_BreakingDam()
 	pbfc.Initialize(world, subWorld);
 	printf("coarse: %d, fine : %d\n", world->GetNumOfParticles(), subWorld->GetNumOfParticles());
 
-	/*
+	
 	// PIC for coarse grid
-	Vector3f bSize = containerEnd - containerStart;
-	picForCoarse.Initialize(world, containerStart, bSize, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
-	picForCoarse.AssignBoundary(world->GetBoundaryParticleList());
+	//Vector3f bSize = containerEnd - containerStart;
+	//picForCoarse.Initialize(world, containerStart, bSize, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
+	//picForCoarse.AssignBoundary(world->GetBoundaryParticleList());
 
 	// PIC for fine grid
-	picForFine.Initialize(subWorld, containerStart, bSize, Vector3i((int)(bSize[0] * 20), (int)(bSize[1] * 20), (int)(bSize[2] * 20)), 1.0);
+	//picForFine.Initialize(subWorld, containerStart, bSize, Vector3i((int)(bSize[0] * 20), (int)(bSize[1] * 20), (int)(bSize[2] * 20)), 1.0);
 
-	descForCoarse = (float*)malloc(sizeof(float) * 4 * descWidthForC * descWidthForC * descWidthForC * sampleCount);
-	descForFine = (float*)malloc(sizeof(float) * 4 * descWidthForF * descWidthForF * descWidthForF * sampleCount);
-	gtForFine = (float*)malloc(sizeof(float) * 3 * sampleCount);
-	*/
+	//descForCoarse = (float*)malloc(sizeof(float) * 4 * descWidthForC * descWidthForC * descWidthForC * sampleCount);
+	//descForFine = (float*)malloc(sizeof(float) * 4 * descWidthForF * descWidthForF * descWidthForF * sampleCount);
+	//gtForFine = (float*)malloc(sizeof(float) * 3 * sampleCount);
+	
 }
 void cleanup()
 {
@@ -408,7 +409,7 @@ void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryPa
 	int countY = (int)(diff[1] / diameter) + 1;
 	int countZ = (int)(diff[2] / diameter) + 1;
 
-	unsigned int startIndex = p_boundaryParticle.size();
+	int startIndex = (int)p_boundaryParticle.size();
 	p_boundaryParticle.resize(startIndex + countX*countY*countZ);
 
 #pragma omp parallel default(shared)
@@ -687,3 +688,4 @@ void PositionDataSave()
 	fclose(fp);
 	printf("%d frame's positionData were saved.\n", accFrameCount);
 }
+*/

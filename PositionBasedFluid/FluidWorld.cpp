@@ -122,7 +122,7 @@ void FluidWorld::NeighborListUpdate()
 }
 void FluidWorld::ComputeDensities()
 {
-	int numParticles = m_particles.size();
+	int numParticles = (int)m_particles.size();
 
 #pragma omp parallel default(shared)
 	{
@@ -149,9 +149,9 @@ void FluidWorld::UpdateTimeStepSizeCFL()
 	float h = m_timeStep;
 
 	// Approximate max. position change due to current velocities
-	float maxVel = 0.1;
+	float maxVel = 0.1f;
 	unsigned int numParticles = m_numOfParticles;
-	float diameter = 2.0*radius;
+	float diameter = 2.0f * radius;
 	for (int i = 0; i < numParticles; i++)
 	{
 		Vector3f vel = GetParticle(i)->m_velocity;
@@ -180,9 +180,9 @@ void FluidWorld::UpdateTimeStepSizeCFL()
 	*/
 
 	// Approximate max. time step size 		
-	float m_cflFactor = 0.5;
-	float m_cflMaxTimeStepSize = 0.005;
-	float minTimeStepSize = 0.0001;
+	float m_cflFactor = 0.5f;
+	float m_cflMaxTimeStepSize = 0.005f;
+	float minTimeStepSize = 0.0001f;
 	h = m_cflFactor * .4 * (diameter / (sqrt(maxVel)));
 
 	h = std::min(h, m_cflMaxTimeStepSize);

@@ -63,6 +63,10 @@ public:
 	{
 		return m_particles;
 	}
+	FParticle* GetBoundaryParticle(int p_index)
+	{
+		return m_boundaryParticles[p_index];
+	}
 	std::vector<FParticle*>& GetBoundaryParticleList()
 	{
 		return m_boundaryParticles;
@@ -96,7 +100,7 @@ public:
 	}
 
 	FluidKernel& GetKernel() { return k; }
-	double GetTimeStep() { return m_timeStep; }
+	float GetTimeStep() { return m_timeStep; }
 	float GetParticleRadius() { return m_particleRadius;  }
 	float GetRestDensity() { return m_restDensity; }
 

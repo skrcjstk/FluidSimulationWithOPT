@@ -139,14 +139,19 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Array3d.h" />
     <ClInclude Include="FlowBoundary.h" />
+    <ClInclude Include="LPIC.h" />
     <ClInclude Include="PBFControl.h" />
+    <ClInclude Include="PIC.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FlowBondary.cpp" />
+    <ClCompile Include="LPIC.cpp" />
     <ClCompile Include="PBFContol.cpp" />
+    <ClCompile Include="PIC.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

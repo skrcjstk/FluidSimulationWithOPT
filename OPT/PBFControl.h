@@ -48,7 +48,7 @@ public:
 	void UpdateTrainingDataForSub(FluidWorld* p_subWorld);
 	
 	float m_intensityOfDensityC = 1.0f;
-	float m_intensityOfVelocityC = 0.01f;
+	float m_intensityOfVelocityC = 0.05f;
 
 };
 

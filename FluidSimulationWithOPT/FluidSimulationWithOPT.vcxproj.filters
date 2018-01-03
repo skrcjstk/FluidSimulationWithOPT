@@ -36,6 +36,12 @@
     <ClCompile Include="PrimitiveBuffer.cpp">
       <Filter>소스 파일\Visualization</Filter>
     </ClCompile>
+    <ClCompile Include="LPIC_main.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="PIC_main.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Visualization\Camera.h">

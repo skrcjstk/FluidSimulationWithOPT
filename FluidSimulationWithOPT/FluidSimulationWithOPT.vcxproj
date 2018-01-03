@@ -153,6 +153,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Demo.cpp" />
+    <ClCompile Include="LPIC_main.cpp" />
+    <ClCompile Include="PIC_main.cpp" />
     <ClCompile Include="PrimitiveBuffer.cpp" />
     <ClCompile Include="Visualization\Camera.cpp" />
     <ClCompile Include="Visualization\MiniGL.cpp" />

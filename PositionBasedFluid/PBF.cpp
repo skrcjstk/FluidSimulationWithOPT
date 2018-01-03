@@ -10,8 +10,8 @@ PBFWorld::PBFWorld(float p_restDensity, float p_viscosity, float p_surfaceTensio
 
 void PBFWorld::Reset()
 {
-	unsigned int numOfParticles = m_particlesLambda.size();
-	for (int i = 0; i < (int)numOfParticles; i++)
+	int numOfParticles = (int)m_particlesLambda.size();
+	for (int i = 0; i < numOfParticles; i++)
 	{
 		m_particlesLambda[i] = 0.0f;
 		m_deltaX[i].setZero();
@@ -37,15 +37,16 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 	int maxiter = 100;
 	int iter = 0;
 
-	float eps = 1.0e-6;
+	float eps = 1.0e-6f;
 
-	unsigned int numParticles = p_particles.size();
-	float invH = 1.0 / p_timeStep;
+	int numParticles = (int)p_particles.size();
+
+	float invH = 1.0f / p_timeStep;
 	float invH2 = invH*invH;
 
 	float density0 = m_restDensity;
 	float maxError = 0.01f;
-	float eta = maxError * 0.01 * density0;  // maxError is given in percent
+	float eta = maxError * 0.01f * density0;  // maxError is given in percent
 
 	float avg_density_err = 0.0f;
 	while (((avg_density_err > eta) || (iter < 2)) && (iter < maxiter))
@@ -137,7 +138,7 @@ void PBFWorld::ConstraintProjection(std::vector<FParticle*>& p_particles, std::v
 
 void PBFWorld::ComputeXSPHViscosity(std::vector<FParticle*>& p_particles)
 {
-	unsigned int numParticles = p_particles.size();
+	int numParticles = (int)p_particles.size();
 #pragma omp parallel default(shared)
 	{
 #pragma omp for schedule(static)  
