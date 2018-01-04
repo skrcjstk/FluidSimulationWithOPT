@@ -33,8 +33,8 @@
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="..\FluidSimulationWithOPT\PrimitiveBuffer.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.cpp">
+      <Filter>소스 파일\Visualization</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -53,8 +53,8 @@
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Visualization.h">
       <Filter>헤더 파일\Visualization</Filter>
     </ClInclude>
-    <ClInclude Include="..\FluidSimulationWithOPT\PrimitiveBuffer.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.h">
+      <Filter>헤더 파일\Visualization</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

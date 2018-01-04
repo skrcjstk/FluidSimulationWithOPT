@@ -14,15 +14,18 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
     <Filter Include="소스 파일\Visualization">
-      <UniqueIdentifier>{e19a7a4d-7ecd-4752-add2-4c5b04e9c5f9}</UniqueIdentifier>
+      <UniqueIdentifier>{bbcb525a-f18b-4755-81a4-02ced3d704a2}</UniqueIdentifier>
     </Filter>
     <Filter Include="헤더 파일\Visualization">
-      <UniqueIdentifier>{5a6af8ad-7400-4fc9-b54d-67474c6f1b52}</UniqueIdentifier>
+      <UniqueIdentifier>{c0627ad8-7e0f-4e17-a768-3cd97378a3e5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\FluidSimulationWithOPT\PrimitiveBuffer.cpp">
-      <Filter>소스 파일\Visualization</Filter>
+    <ClCompile Include="PIC_main.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="LPIC_main.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Camera.cpp">
       <Filter>소스 파일\Visualization</Filter>
@@ -33,17 +36,8 @@
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Shader.cpp">
       <Filter>소스 파일\Visualization</Filter>
     </ClCompile>
-    <ClCompile Include="LPIC_main.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="LPIC.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="PIC.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="PIC_main.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.cpp">
+      <Filter>소스 파일\Visualization</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -51,9 +45,6 @@
       <Filter>헤더 파일\Visualization</Filter>
     </ClInclude>
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\MiniGL.h">
-      <Filter>헤더 파일\Visualization</Filter>
-    </ClInclude>
-    <ClInclude Include="..\FluidSimulationWithOPT\PrimitiveBuffer.h">
       <Filter>헤더 파일\Visualization</Filter>
     </ClInclude>
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Selection.h">
@@ -65,14 +56,8 @@
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Visualization.h">
       <Filter>헤더 파일\Visualization</Filter>
     </ClInclude>
-    <ClInclude Include="Array3d.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="PIC.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="LPIC.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.h">
+      <Filter>헤더 파일\Visualization</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

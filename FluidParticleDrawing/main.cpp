@@ -2,7 +2,7 @@
 #include "..\FluidSimulationWithOPT\Visualization\MiniGL.h"
 #include "..\FluidSimulationWithOPT\Visualization\Selection.h"
 #include "GL/glut.h"
-#include "..\FluidSimulationWithOPT\PrimitiveBuffer.h"
+#include "..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.h"
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>

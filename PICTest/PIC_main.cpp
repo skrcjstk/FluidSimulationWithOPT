@@ -1,8 +1,8 @@
 #include "GL/glew.h"
-#include "Visualization\MiniGL.h"
-#include "Visualization\Selection.h"
+#include "..\FluidSimulationWithOPT\Visualization\MiniGL.h"
+#include "..\FluidSimulationWithOPT\Visualization\Selection.h"
 #include "GL/glut.h"
-#include "PrimitiveBuffer.h"
+#include "..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.h"
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +25,7 @@ int coarseDamWidth = fineDamWidth / 2;
 int coarseDamHeight = fineDamHeight / 2;
 int coarseDamDepth = fineDamDepth / 2;
 float containerWidth = (coarseDamWidth * 7) * coarseR;
-float containerHeight = (coarseDamWidth * 3) * coarseR;
+float containerHeight = (coarseDamWidth * 5) * coarseR;
 float containerDepth = (coarseDamWidth * 5) * coarseR;
 Vector3f containerStart;
 Vector3f containerEnd;
@@ -36,12 +36,12 @@ int accFrameCount = 0;
 PIC* pic;
 FluidWorld* world;
 
-int frameLimit = 1600;
+int frameLimit = 800;
 GLint context_major_version, context_minor_version;
 Primitive spherePrimiCoarse, spherePrimiFine, boxPrimi;
 
 float* dataForPICDescriptor;
-int desc_width = 3;
+int desc_width = 5;
 
 void timeStep();
 void reset();
@@ -141,7 +141,7 @@ void render()
 	float boundaryColor[4] = { 0.5f, 0.5f, 0.5f, 0.5f };
 	for (int i = 0; i < world->GetNumOfBoundaryParticles(); i++)
 	{
-		spherePrimiCoarse.renderSphere(world->GetBoundaryParticle(i)->m_curPosition, boundaryColor);
+		//spherePrimiCoarse.renderSphere(world->GetBoundaryParticle(i)->m_curPosition, boundaryColor);
 	}
 
 	// draw grid & arrow
@@ -156,7 +156,7 @@ void render()
 	{
 		Vector3f& pos = pic->GetGridPos(g);
 		
-		boxPrimi.renderWireFrameBox(pos, dxyz, boxColor);
+		//boxPrimi.renderWireFrameBox(pos, dxyz, boxColor);
 		
 		//if(pic->GetGid(g) == F)
 		//	boxPrimi.renderPoint(pos, FDot, 1.0f);
@@ -164,24 +164,60 @@ void render()
 		//else if (pic->GetGid(g) == B)
 		//	boxPrimi.renderWireFrameBox(pos, dxyz, boxColor);
 		
-		//Vector3f end = (pos + 0.01f * pic->GetVelocity(g));
-		//boxPrimi.renderArrow3D(pos, end, head_len);
-
+		Vector3f end = (pos + 0.01f * pic->GetVelocity(g));
+		boxPrimi.renderArrow3D(pos, end, head_len);
 	}
+
+	/*
+	int np = world->GetNumOfParticles();
+	int d = desc_width;
+	int halfCnt = (int)(desc_width / 2);
+	int dataSize = 4 * (d*d*d);
+	float* desc = (float*)malloc(sizeof(float) * 4 * desc_width * desc_width * desc_width);
+
+	if (accFrameCount > 1)
+	{
+		for (int n = 0; n < np; n++)
+		{
+			Vector3i& ijk = pic->GetAssignResultF(n);
+			pic->GetDescriptor(ijk, desc, desc_width);
+
+			Vector3f gridPos = pic->GetGridPos(ijk[0], ijk[1], ijk[2]);
+
+			for (int k = -halfCnt; k <= halfCnt; k++)
+				for (int j = -halfCnt; j <= halfCnt; j++)
+					for (int i = -halfCnt; i <= halfCnt; i++)
+					{
+						int idx = 4 * ((k + halfCnt) * (d*d) + (j + halfCnt)*(d)+(i + halfCnt));
+						Vector3i neiGrid = ijk + Vector3i(i, j, k);
+						Vector3f neiGridPos = pic->GetGridPos(neiGrid[0], neiGrid[1], neiGrid[2]);
+
+						Vector3f vel;
+						//result[startidx + idx + 0] = geo[neiIdx];
+						vel[0] = desc[idx + 1];
+						vel[1] = desc[idx + 2];
+						vel[2] = desc[idx + 3];
+
+						Vector3f end = (neiGridPos + 0.01f * vel);
+						boxPrimi.renderArrow3D(neiGridPos, end, head_len);
+					}
+		}
+	}
+	*/
 }
 
 void buildModel()
 {
 	std::vector<Vector3f> boundaryParticles;
 	std::vector<Vector3f> damParticles;
-	//CreateCoarseBreakingDam(damParticles);
-	//CreateCoarseContainer(boundaryParticles);
-	CreateFineBreakingDam(damParticles);
-	CreateFineContainer(boundaryParticles);
+	CreateCoarseBreakingDam(damParticles);
+	CreateCoarseContainer(boundaryParticles);
+	//CreateFineBreakingDam(damParticles);
+	//CreateFineContainer(boundaryParticles);
 
 	world = new FluidWorld();
 	world->SetTimeStep(0.005f);
-	world->CreateParticles(damParticles, boundaryParticles, fineR);
+	world->CreateParticles(damParticles, boundaryParticles, coarseR);
 
 	float gDx = 2.0f * coarseR;
 	Vector3f gStart = containerStart - Vector3f(5.0f * gDx, 5.0f * gDx, 5.0f * gDx);
@@ -297,9 +333,9 @@ void CreateFineBreakingDam(std::vector<Vector3f>& p_damParticles)
 #pragma omp for schedule(static)  
 		for (int i = 0; i < (int)fineDamWidth; i++)
 		{
-			for (unsigned int j = 0; j < fineDamHeight; j++)
+			for (int j = 0; j < fineDamHeight; j++)
 			{
-				for (unsigned int k = 0; k < fineDamDepth; k++)
+				for (int k = 0; k < fineDamDepth; k++)
 				{
 					p_damParticles[i*fineDamHeight*fineDamDepth + j*fineDamDepth + k] = diam*Eigen::Vector3f((float)i, (float)j, (float)k) + Eigen::Vector3f(startX, startY, startZ);
 				}

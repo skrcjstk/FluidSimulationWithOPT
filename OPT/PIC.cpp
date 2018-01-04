@@ -19,11 +19,12 @@ void PIC::Initialize(FluidWorld* p_world, Vector3f p_origin, Vector3f p_bSize, V
 	v = APICArray3d::Array3d<float>(ni, nj + 1, nk, 0.0f);
 	w = APICArray3d::Array3d<float>(ni, nj, nk + 1, 0.0f);
 
-	geo.resize(nk*nj*ni);
-	cellsForF.resize(nk*nj*ni);
-	cellsForB.resize(nk*nj*ni);
-	cells_centor_pos.resize(nk*nj*ni);
-	cells_centor_uvw_coord.resize(nk*nj*ni);
+	int cellCount = nk * nj * ni;
+	geo.resize(cellCount);
+	cellsForF.resize(cellCount);
+	cellsForB.resize(cellCount);
+	cells_centor_pos.resize(cellCount);
+	cells_centor_uvw_coord.resize(cellCount);
 
 	for (int k = 0; k < nk; k++)
 		for (int j = 0; j < nj; j++)
@@ -280,7 +281,7 @@ void PIC::GetDescriptorAll(float result[], int desc_width)
 						int idx = 4 * ( (k + halfCnt) * (d*d) + (j + halfCnt)*(d) + (i + halfCnt));
 						
 						Vector3i neiGrid = ijk + Vector3i(i, j, k);
-						int neiIdx = k*nj*ni + j*ni + i;
+						int neiIdx = neiGrid[2]*nj*ni + neiGrid[1]*ni + neiGrid[0];
 						Vector3f vel = GetVelocity(neiIdx);
 
 						result[startidx + idx + 0] = geo[neiIdx];
@@ -304,7 +305,7 @@ void PIC::GetDescriptor(Vector3i p_ijk, float result[], int desc_width)
 				int idx = 4 * ((k + halfCnt) * (d*d) + (j + halfCnt)*(d)+(i + halfCnt));
 
 				Vector3i neiGrid = p_ijk + Vector3i(i, j, k);
-				int neiIdx = k*nj*ni + j*ni + i;
+				int neiIdx = neiGrid[2] * nj*ni + neiGrid[1] * ni + neiGrid[0];
 				Vector3f vel = GetVelocity(neiIdx);
 
 				result[idx + 0] = geo[neiIdx];

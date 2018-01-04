@@ -149,16 +149,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\FluidSimulationWithOPT\PrimitiveBuffer.cpp" />
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Camera.cpp" />
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\MiniGL.cpp" />
+    <ClCompile Include="..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.cpp" />
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Shader.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\FluidSimulationWithOPT\PrimitiveBuffer.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Camera.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\MiniGL.h" />
+    <ClInclude Include="..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Selection.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Shader.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Visualization.h" />

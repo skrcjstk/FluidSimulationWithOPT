@@ -3,8 +3,8 @@
 #define __PRIMITIVEBUFFER_H__
 
 #include "GL/glew.h"
-#include "Visualization\MiniGL.h"
-#include "Visualization\Selection.h"
+#include "MiniGL.h"
+#include "Selection.h"
 #include "GL/glut.h"
 #include <Eigen/Dense>
 

@@ -1,9 +1,8 @@
-/*
 #include "GL/glew.h"
 #include "Visualization\MiniGL.h"
 #include "Visualization\Selection.h"
 #include "GL/glut.h"
-#include "PrimitiveBuffer.h"
+#include "Visualization\PrimitiveBuffer.h"
 #include "FluidWorld.h"
 #include "FlowBoundary.h"
 #include "PBFControl.h"
@@ -52,25 +51,23 @@ TimerChrono timer;
 FluidWorld* world;
 FluidWorld* subWorld;
 PBFControl pbfc;
-PIC picForCoarse, picForFine;
+PIC *picForCoarse,*picForFine;
 float *descForCoarse, *descForFine, *gtForFine;
-int descWidthForC=5, descWidthForF=5;
-int sampleCount = 6000;
+int descWidthForC=5, descWidthForF=3;
 
-float fineR = 0.025f;
-float coarseR = 2 * fineR;
 bool doPause = true;
 
+float fineR = 0.025f;
+float coarseR = 0.05f;
 int fineDamWidth = 20;
 int fineDamHeight = 20;
 int fineDamDepth = 20;
 int coarseDamWidth = fineDamWidth / 2;
 int coarseDamHeight = fineDamHeight / 2;
 int coarseDamDepth = fineDamDepth / 2;
-float containerWidth = (coarseDamWidth + 1) * coarseR * 2.0f * 5.0f;
-float containerHeight = 3.0f;
-float containerDepth = (coarseDamDepth + 1) * coarseR * 2.0f * 3.0f;
-
+float containerWidth = (coarseDamWidth * 7) * coarseR;
+float containerHeight = (coarseDamWidth * 5) * coarseR;
+float containerDepth = (coarseDamWidth * 5) * coarseR;
 Vector3f containerStart;
 Vector3f containerEnd;
 Vector3f subContainerStart;
@@ -134,10 +131,10 @@ void timeStep()
 		// fine advection and neighbor update
 		subWorld->StepPBFonSub1();
 			
-		//picForCoarse.AssignCells(world);
-		//picForCoarse.Map_P2G(world);
-		//picForFine.AssignCells(subWorld);
-		//picForFine.Map_P2G(subWorld);
+		picForCoarse->AssignCells(world);
+		picForCoarse->Map_P2G(world);
+		picForFine->AssignCells(subWorld);
+		picForFine->Map_P2G(subWorld);
 
 		// neighbor update between fine and coarse
 		pbfc.NeighborBTWTwoResForPBFC(world, subWorld);
@@ -150,8 +147,8 @@ void timeStep()
 		// fine density relaxing and update
 		subWorld->StepPBFonSub2();
 
-		// Data save
-		//PICTrainingDataSave();
+		// pbfc Data save
+		PICTrainingDataSave();
 		//DataSave();
 		
 	}
@@ -266,7 +263,7 @@ void buildModel_BreakingDam()
 	CreateCoarseContainer(boundaryParticles);
 			
 	world = new FluidWorld();
-	world->SetTimeStep(0.0025f);
+	world->SetTimeStep(0.005f);
 	world->CreateParticles(damParticles, boundaryParticles, coarseR);
 
 	// sub domain creation
@@ -276,25 +273,32 @@ void buildModel_BreakingDam()
 	CreateFineContainer(subBoundaryParticles);
 	
 	subWorld = new FluidWorld();
-	subWorld->SetTimeStep(0.0025f);
+	subWorld->SetTimeStep(0.005f);
 	subWorld->CreateParticles(subDamParticles, subBoundaryParticles, fineR);
 	
 	// FlowBoundary Setting and create fine ps
 	pbfc.Initialize(world, subWorld);
 	printf("coarse: %d, fine : %d\n", world->GetNumOfParticles(), subWorld->GetNumOfParticles());
 
-	
 	// PIC for coarse grid
-	//Vector3f bSize = containerEnd - containerStart;
-	//picForCoarse.Initialize(world, containerStart, bSize, Vector3i((int)(bSize[0] * 10), (int)(bSize[1] * 10), (int)(bSize[2] * 10)), 1.0);
-	//picForCoarse.AssignBoundary(world->GetBoundaryParticleList());
+	float gDx = 2.0f * coarseR;
+	Vector3f gStart = containerStart - Vector3f(5.0f * gDx, 5.0f * gDx, 5.0f * gDx);
+	Vector3f gEnd = containerEnd + Vector3f(5.0f*gDx, 5.0f*gDx, 5.0f*gDx);
+	Vector3f gSize = gEnd - gStart;
+
+	// PIC for Coarse grid
+	picForCoarse = new PIC();
+	picForCoarse->Initialize(world, gStart, gEnd - gStart, Vector3i((int)(gSize[0] / gDx), (int)(gSize[1] / gDx), (int)(gSize[2] / gDx)), 1.0);
+	picForCoarse->AssignBoundary(world->GetBoundaryParticleList());
 
 	// PIC for fine grid
-	//picForFine.Initialize(subWorld, containerStart, bSize, Vector3i((int)(bSize[0] * 20), (int)(bSize[1] * 20), (int)(bSize[2] * 20)), 1.0);
+	picForFine = new PIC();
+	picForFine->Initialize(subWorld, gStart, gEnd - gStart, Vector3i((int)(gSize[0] / gDx), (int)(gSize[1] / gDx), (int)(gSize[2] / gDx)), 1.0);
+	picForFine->AssignBoundary(subWorld->GetBoundaryParticleList());
 
-	//descForCoarse = (float*)malloc(sizeof(float) * 4 * descWidthForC * descWidthForC * descWidthForC * sampleCount);
-	//descForFine = (float*)malloc(sizeof(float) * 4 * descWidthForF * descWidthForF * descWidthForF * sampleCount);
-	//gtForFine = (float*)malloc(sizeof(float) * 3 * sampleCount);
+	descForCoarse = (float*)malloc(sizeof(float) * 4 * descWidthForC * descWidthForC * descWidthForC * subWorld->GetNumOfParticles());
+	descForFine = (float*)malloc(sizeof(float) * 4 * descWidthForF * descWidthForF * descWidthForF * subWorld->GetNumOfParticles());
+	gtForFine = (float*)malloc(sizeof(float) * 3 * subWorld->GetNumOfParticles());
 	
 }
 void cleanup()
@@ -390,7 +394,7 @@ void CreateCoarseContainer(std::vector<Vector3f>& p_boundaryParticles)
 	// Floor
 	AddWall(Vector3f(x1, y1, z1), Vector3f(x2, y1, z2), p_boundaryParticles, coarseR);
 	// Top
-	AddWall(Vector3f(x1, y2, z1), Vector3f(x2, y2, z2), p_boundaryParticles, coarseR);
+	//AddWall(Vector3f(x1, y2, z1), Vector3f(x2, y2, z2), p_boundaryParticles, coarseR);
 	// Left
 	AddWall(Vector3f(x1, y1, z1), Vector3f(x1, y2, z2), p_boundaryParticles, coarseR);
 	// Right
@@ -399,6 +403,36 @@ void CreateCoarseContainer(std::vector<Vector3f>& p_boundaryParticles)
 	AddWall(Vector3f(x1, y1, z1), Vector3f(x2, y2, z1), p_boundaryParticles, coarseR);
 	// Front
 	AddWall(Vector3f(x1, y1, z2), Vector3f(x2, y2, z2), p_boundaryParticles, coarseR);
+}
+void CreateFineContainer(std::vector<Vector3f>& p_boundaryParticles)
+{
+	float x1 = -containerWidth / 2.0f;
+	float x2 = containerWidth / 2.0f;
+	float y1 = 0.0f;
+	float y2 = containerHeight;
+	float z1 = -containerDepth / 2.0f;
+	float z2 = containerDepth / 2.0f;
+
+	subContainerStart[0] = x1;
+	subContainerStart[1] = y1;
+	subContainerStart[2] = z1;
+
+	subContainerEnd[0] = x2;
+	subContainerEnd[1] = y2;
+	subContainerEnd[2] = z2;
+	
+	// Floor
+	AddWall(Vector3f(x1, y1, z1), Vector3f(x2, y1, z2), p_boundaryParticles, fineR);
+	// Top
+	//AddWall(Vector3f(x1, y2, z1), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
+	// Left
+	AddWall(Vector3f(x1, y1, z1), Vector3f(x1, y2, z2), p_boundaryParticles, fineR);
+	// Right
+	AddWall(Vector3f(x2, y1, z1), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
+	// Back
+	AddWall(Vector3f(x1, y1, z1), Vector3f(x2, y2, z1), p_boundaryParticles, fineR);
+	// Front
+	AddWall(Vector3f(x1, y1, z2), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
 }
 void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryParticle, float p_particleRadius)
 {
@@ -428,37 +462,6 @@ void AddWall(Vector3f p_min, Vector3f p_max, std::vector<Vector3f>& p_boundaryPa
 		}
 	}
 }
-void CreateFineContainer(std::vector<Vector3f>& p_boundaryParticles)
-{
-	float x1 = -containerWidth / 2.0f;
-	float x2 = containerWidth / 2.0f;
-	float y1 = 0.0f;
-	float y2 = containerHeight;
-	float z1 = -containerDepth / 2.0f;
-	float z2 = containerDepth / 2.0f;
-
-	subContainerStart[0] = x1;
-	subContainerStart[1] = y1;
-	subContainerStart[2] = z1;
-
-	subContainerEnd[0] = x2;
-	subContainerEnd[1] = y2;
-	subContainerEnd[2] = z2;
-	
-	// Floor
-	AddWall(Vector3f(x1, y1, z1), Vector3f(x2, y1, z2), p_boundaryParticles, fineR);
-	// Top
-	AddWall(Vector3f(x1, y2, z1), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
-	// Left
-	AddWall(Vector3f(x1, y1, z1), Vector3f(x1, y2, z2), p_boundaryParticles, fineR);
-	// Right
-	AddWall(Vector3f(x2, y1, z1), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
-	// Back
-	AddWall(Vector3f(x1, y1, z1), Vector3f(x2, y2, z1), p_boundaryParticles, fineR);
-	// Front
-	AddWall(Vector3f(x1, y1, z2), Vector3f(x2, y2, z2), p_boundaryParticles, fineR);
-}
-
 void LoadContainerAndFluidDam(string path, std::vector<Vector3f>& p_boundaryParticles, std::vector<Vector3f>& p_damParticles, float& p_radius)
 {
 	FILE* fpEnv = fopen(path.c_str(), "rb");
@@ -622,37 +625,44 @@ void PICTrainingDataSave()
 	int ibuf[1];
 	int np = subWorld->GetNumOfParticles();
 
-	int success = 0;
 	int sizeForC = 4 * descWidthForC * descWidthForC * descWidthForC;
 	int sizeForF = 4 * descWidthForF * descWidthForF * descWidthForF;
 
-	while(success<sampleCount)
+	for (int n = 0; n < np; n++)
 	{
-		int rnd_idx = std::rand() % np;
-		Vector3i& aRes = picForFine.GetAssignResultF(rnd_idx);
+		Vector3i& aRes = picForFine->GetAssignResultF(n);
 		if (aRes[0] != -1 && aRes[1] != -1 && aRes[2] != -1)
 		{
-			picForCoarse.GetAPICDescriptor(aRes, descForCoarse + success*sizeForC, descWidthForC);
-			picForFine.GetAPICDescriptor(aRes, descForFine + success*sizeForF, descWidthForF);
-			Vector3f deltaP = fineP[rnd_idx]->m_curPosition - fineP[rnd_idx]->m_tempPosition;
+			picForCoarse->GetDescriptor(aRes, descForCoarse + n*sizeForC, descWidthForC);
+			picForFine->GetDescriptor(aRes, descForFine + n*sizeForF, descWidthForF);
+			Vector3f corrVel = (fineP[n]->m_curPosition - fineP[n]->m_tempPosition) / subWorld->GetTimeStep();
 
-			gtForFine[3 * success + 0] = deltaP[0];
-			gtForFine[3 * success + 1] = deltaP[1];
-			gtForFine[3 * success + 2] = deltaP[2];
+			gtForFine[3 * n + 0] = corrVel[0];
+			gtForFine[3 * n + 1] = corrVel[1];
+			gtForFine[3 * n + 2] = corrVel[2];
+		}
+		else
+		{
+			for (int i = 0; i < sizeForC; i++)
+				descForCoarse[n*sizeForC + i] = 0;
+			for (int i = 0; i < sizeForF; i++)
+				descForFine[n*sizeForF + i] = 0;
 
-			success += 1;
+			gtForFine[3 * n + 0] = 0;
+			gtForFine[3 * n + 1] = 0;
+			gtForFine[3 * n + 2] = 0;
 		}
 	}
 
-	fwrite(descForCoarse, sizeof(float), sizeForC * sampleCount, fpForC);
-	fwrite(descForFine, sizeof(float), sizeForF * sampleCount, fpForF);
-	fwrite(gtForFine, sizeof(float), 3 * sampleCount, fpForGT);
+	fwrite(descForCoarse, sizeof(float), sizeForC * np, fpForC);
+	fwrite(descForFine, sizeof(float), sizeForF * np, fpForF);
+	fwrite(gtForFine, sizeof(float), 3 * np, fpForGT);
 	
 	fclose(fpForC);
 	fclose(fpForF);
 	fclose(fpForGT);
 	
-	printf("(%d)frame sampled and saved(%d)\n", accFrameCount, success);
+	printf("(%d)frame sampled and saved(%d)\n", accFrameCount, np);
 }
 
 void PositionDataSave()
@@ -688,4 +698,3 @@ void PositionDataSave()
 	fclose(fp);
 	printf("%d frame's positionData were saved.\n", accFrameCount);
 }
-*/

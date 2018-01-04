@@ -19,9 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{CA4670EA-F223-4EA9-A4EA-CEFF05D1DFCC}</ProjectGuid>
+    <ProjectGuid>{8B6CFA2A-8826-4744-845C-8F1646DE07F9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>APICTest</RootNamespace>
+    <RootNamespace>PICTest</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -135,10 +135,9 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\Extern\freeglut\include;..\Extern\glew\include;..\Extern\eigen;..\Extern\AntTweakBar\include;..\PositionBasedFluid;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <OpenMPSupport>true</OpenMPSupport>
+      <AdditionalIncludeDirectories>..\Extern\freeglut\include;..\Extern\glew\include;..\Extern\eigen;..\Extern\AntTweakBar\include;..\OPT;..\PositionBasedFluid;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -146,29 +145,24 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\x64\Release\libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>freeglut.lib;opengl32.lib;glu32.lib;AntTweakBar64.lib;glew.lib;PositionBasedFluid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>freeglut.lib;opengl32.lib;glu32.lib;AntTweakBar64.lib;glew.lib;PositionBasedFluid.lib;OPT.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\FluidSimulationWithOPT\PrimitiveBuffer.cpp" />
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Camera.cpp" />
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\MiniGL.cpp" />
+    <ClCompile Include="..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.cpp" />
     <ClCompile Include="..\FluidSimulationWithOPT\Visualization\Shader.cpp" />
-    <ClCompile Include="PIC.cpp" />
-    <ClCompile Include="LPIC.cpp" />
     <ClCompile Include="LPIC_main.cpp" />
     <ClCompile Include="PIC_main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\FluidSimulationWithOPT\PrimitiveBuffer.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Camera.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\MiniGL.h" />
+    <ClInclude Include="..\FluidSimulationWithOPT\Visualization\PrimitiveBuffer.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Selection.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Shader.h" />
     <ClInclude Include="..\FluidSimulationWithOPT\Visualization\Visualization.h" />
-    <ClInclude Include="PIC.h" />
-    <ClInclude Include="Array3d.h" />
-    <ClInclude Include="LPIC.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

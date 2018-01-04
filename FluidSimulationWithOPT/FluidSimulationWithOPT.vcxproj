@@ -153,17 +153,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Demo.cpp" />
-    <ClCompile Include="LPIC_main.cpp" />
-    <ClCompile Include="PIC_main.cpp" />
-    <ClCompile Include="PrimitiveBuffer.cpp" />
     <ClCompile Include="Visualization\Camera.cpp" />
     <ClCompile Include="Visualization\MiniGL.cpp" />
+    <ClCompile Include="Visualization\PrimitiveBuffer.cpp" />
     <ClCompile Include="Visualization\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="PrimitiveBuffer.h" />
     <ClInclude Include="Visualization\Camera.h" />
     <ClInclude Include="Visualization\MiniGL.h" />
+    <ClInclude Include="Visualization\PrimitiveBuffer.h" />
     <ClInclude Include="Visualization\Selection.h" />
     <ClInclude Include="Visualization\Shader.h" />
     <ClInclude Include="Visualization\Visualization.h" />

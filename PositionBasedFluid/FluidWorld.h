@@ -72,11 +72,11 @@ public:
 		return m_boundaryParticles;
 	}
 
-	unsigned int  GetNumOfParticles()
+	int  GetNumOfParticles()
 	{
 		return m_numOfParticles;
 	}
-	unsigned int GetNumOfBoundaryParticles()
+	int GetNumOfBoundaryParticles()
 	{
 		return m_numOfBoundaryParticles;
 	}
