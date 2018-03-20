@@ -80,6 +80,7 @@ int accFrameCount = 0;
 int main(int argc, char** argv)
 {
 	std::srand((unsigned int)std::time(nullptr));
+	printf("OpenMP version: %d\n", _OPENMP);
 
 	// OpenGL	
 	MiniGL::init(argc, argv, 1024, 768, 0, 0, "Fluid demo");
@@ -129,26 +130,26 @@ void timeStep()
 		world->StepPBF();
 
 		// fine advection and neighbor update
-		subWorld->StepPBFonSub1();
+		//subWorld->StepPBFonSub1();
 			
-		picForCoarse->AssignCells(world);
-		picForCoarse->Map_P2G(world);
-		picForFine->AssignCells(subWorld);
-		picForFine->Map_P2G(subWorld);
+		//picForCoarse->AssignCells(world);
+		//picForCoarse->Map_P2G(world);
+		//picForFine->AssignCells(subWorld);
+		//picForFine->Map_P2G(subWorld);
 
 		// neighbor update between fine and coarse
-		pbfc.NeighborBTWTwoResForPBFC(world, subWorld);
+		//pbfc.NeighborBTWTwoResForPBFC(world, subWorld);
 		//pbfc.UpdateTrainingDataForMain(world, subWorld);
 		//pbfc.UpdateTrainingDataForSub(subWorld);
 
 		// update lambda for coarse & solve density and velocity constraints
-		pbfc.SolvePBFCConstaints(world, subWorld);
+		//pbfc.SolvePBFCConstaints(world, subWorld);
 
 		// fine density relaxing and update
-		subWorld->StepPBFonSub2();
+		//subWorld->StepPBFonSub2();
 
 		// pbfc Data save
-		PICTrainingDataSave();
+		//PICTrainingDataSave();
 		//DataSave();
 		
 	}

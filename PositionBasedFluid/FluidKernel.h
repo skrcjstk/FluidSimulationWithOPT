@@ -114,6 +114,67 @@ public:
 		return up / down;
 	}
 
+	/*
+	float selfFac;
+	float invH;
+	float invPIF = 1.0f / 3.141592f;
+
+	void SetSmoothingRadius(float p_radius)
+	{
+		invH = 1.0f / p_radius;
+		selfFac = invPIF * invH * invH * invH;
+		res_0 = Cubic_Kernel(Vector3f(0.0f, 0.0f, 0.0f));
+	}
+	float Cubic_Kernel(Vector3f r)
+	{
+		float rLength = r.norm();
+		float q = rLength / h;
+		float val;
+		float tmp2 = 2.0f - q;
+
+		if (q > 2.0f)
+			val = 0.0f;
+		else if (q > 1.0f)
+			val = 0.25f * tmp2 * tmp2 * tmp2;
+		else
+			val = 1.0f - (1.5f * q * q * (1.0f - 0.5f * q));
+
+		return val * selfFac;
+	}
+	float Cubic_Kernel0()
+	{
+		return res_0;
+	}
+	Vector3f Cubic_Kernel_Gradient(Vector3f r)
+	{
+		float rLength = r.norm();
+		float q = rLength / h;
+		float val;
+		float tmp2 = 2.0f - q;
+
+		if (rLength > 1.0e-12f)
+		{
+			if (q > 2.0f)
+				val = 0.0f;
+			else if (q > 1.0f)
+				val = -0.75f * tmp2 * tmp2 * invH / rLength;
+			else
+				val = -3.0f * q * (1.0f - 0.75f * q) * invH / rLength;
+		}
+		else
+			val = 0.0f;
+
+		float tmp = val * selfFac;
+
+		Vector3f res;
+		res[0] = tmp * r[0];
+		res[1] = tmp * r[1];
+		res[2] = tmp * r[2];
+
+		return res;
+	}
+	*/
+
 	void SetSmoothingRadius(float p_radius)
 	{
 		h = p_radius;
